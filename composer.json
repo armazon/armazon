@@ -1,0 +1,27 @@
+{
+  "name": "armazon/armazon",
+  "description": "Armazón de Trabajo y Servidor de Aplicación de Alto Rendimiento",
+  "keywords": ["framework", "swoole", "appserver", "server", "async", "non-blocking", "concurrent"],
+  "homepage": "https://armazonphp.com",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Nestor Picado",
+      "email": "info@nestorpicado.com",
+      "homepage": "http://nestorpicado.com",
+      "role": "Lead Developer"
+    }
+  ],
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "require": {
+    "php": ">=7.0.0",
+    "ext-swoole": ">=1.8.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Armazon\\": "src/Armazon/"
+    }
+  },
+  "bin": ["bin/armazon"]
+}
