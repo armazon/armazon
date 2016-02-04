@@ -1,0 +1,14 @@
+language: php
+php:
+  - 7
+env:
+  - AMBIENTE=desarrollo
+before_script:
+  - pecl install swoole
+  - composer self-update
+  - composer install
+script:
+  - phpunit --coverage-clover=coverage.clover
+addons:
+    code_climate:
+        repo_token: 9c2bf654e55896dd2271c3f286aa15388b21053fdab4ae7d6d1d3d177307600a
