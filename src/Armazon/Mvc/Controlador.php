@@ -10,7 +10,7 @@ use Armazon\Nucleo\Aplicacion;
 /**
  * Capa Controlador del patrón MVC.
  */
-class Controlador
+abstract class Controlador
 {
     /** @var Aplicacion */
     protected $app;
@@ -22,6 +22,8 @@ class Controlador
     /** @var Vista  */
     protected $vista;
     protected $parametros;
+    protected $controlador;
+    protected $accion;
 
     public function __construct(Aplicacion $app, Peticion $peticion, Respuesta $respuesta)
     {

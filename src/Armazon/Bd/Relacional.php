@@ -14,17 +14,17 @@ class Relacional
     private $app;
 
     /** @var \PDO */
-    private $componente_pdo;
+    private $componentePdo;
 
     /** @var AdaptadorInterface */
-    private $componente_cache;
+    private $componenteCache;
 
     private $sentencia;
-    private $cache_activado = false;
-    private $cache_ttl;
-    private $cache_llave;
-    private $cache_sobrescribir = false;
-    private $cache_resultado;
+    private $cacheActivado = false;
+    private $cacheTtl;
+    private $cacheLlave;
+    private $cacheSobrescribir = false;
+    private $cacheResultado;
     private $depurar = false;
 
     /**
@@ -42,7 +42,12 @@ class Relacional
         $this->app = $app;
 
         // Verificamos configuraciones requeridas
-        if (!isset($config['usuario'], $config['contrasena'], $config['servidores'][0][0], $config['servidores'][0][1])) {
+        if (
+            !isset($config['usuario'],
+            $config['contrasena'],
+            $config['servidores'][0][0],
+            $config['servidores'][0][1])
+        ) {
             throw new \InvalidArgumentException('Faltan configuraciones requeridas o algunas son inválidas.', 4006);
         }
 
@@ -69,7 +74,7 @@ class Relacional
         while (!$conectado && count($pesos)) {
             $llave = array_shift($pesos);
             try {
-                $this->componente_pdo = new \PDO(
+                $this->componentePdo = new \PDO(
                     $config['dsn'][$llave][0],
                     $config['usuario'],
                     $config['contrasena'],
@@ -90,16 +95,19 @@ class Relacional
 
             // Ejecutamos el comando inicial en caso necesario
             if (isset($config['comando_inicial'])) {
-                $this->componente_pdo->exec($config['comando_inicial']);
+                $this->componentePdo->exec($config['comando_inicial']);
             }
         } else {
             throw new \RuntimeException('No se pudo abrir conexion a la base de datos.');
         }
     }
 
-    function __destruct()
+    /**
+     * Cierra la conexión al servidor antes de destruir la instancia. Por precaución.
+     */
+    public function __destruct()
     {
-        $this->desconectar();
+        $this->componentePdo = null;
     }
 
     /**
@@ -118,20 +126,6 @@ class Relacional
     }
 
     /**
-     * Cierra la conexión al servidor.
-     *
-     * @return bool
-     */
-    public function desconectar(): bool
-    {
-        $this->reiniciarConsulta();
-
-        $this->componente_pdo = null;
-
-        return true;
-    }
-
-    /**
      * Selecciona la base de datos interna.
      *
      * @param string $basedatos
@@ -142,7 +136,7 @@ class Relacional
      */
     public function seleccionarBd(string $basedatos): self
     {
-        if ($this->componente_pdo->exec('USE ' . $basedatos) !== false) {
+        if ($this->componentePdo->exec('USE ' . $basedatos) !== false) {
             return $this;
         } else {
             throw new \RuntimeException('No se pudo seleccionar base de datos.');
@@ -191,7 +185,7 @@ class Relacional
 
             // Retornamos valor textual
             if ($tipo == 'txt') {
-                return $this->componente_pdo->quote($valor);
+                return $this->componentePdo->quote($valor);
             }
 
             // Retornamos valor numerico
@@ -221,8 +215,8 @@ class Relacional
     public function obtener(string $indizar_por = null, string $agrupar_por = null, string $clase = null, array $clase_args = [])
     {
         // Se obtiene resultados desde cache según el caso
-        if ($this->cache_activado && $this->cache_resultado !== false) {
-            return $this->cache_resultado;
+        if ($this->cacheActivado && $this->cacheResultado !== false) {
+            return $this->cacheResultado;
         }
 
         // Validamos la sentencia a ejecutar
@@ -232,12 +226,13 @@ class Relacional
 
         // Consultamos la sentencia para obtener datos
         $ti = microtime(true);
-        $resultado = $this->componente_pdo->query($this->sentencia);
+        $resultado = $this->componentePdo->query($this->sentencia);
 
         if ($resultado === false) {
 
             if ($this->depurar) {
-                throw new \RuntimeException('La sentencia [ ' . $this->sentencia . ' ] dió el siguiente error: ' . $this->componente_pdo->errorInfo() . '.');
+                throw new \RuntimeException('La sentencia [ ' . $this->sentencia . ' ] dió el siguiente error: '
+                    . $this->componentePdo->errorInfo() . '.');
             }
 
             return false;
@@ -338,11 +333,11 @@ class Relacional
             }
 
             // Se guarda resultados en cache según el caso
-            if ($this->cache_activado) {
-                $this->componente_cache->guardar($this->cache_llave, $final, $this->cache_ttl);
+            if ($this->cacheActivado) {
+                $this->componenteCache->guardar($this->cacheLlave, $final, $this->cacheTtl);
 
                 if ($this->depurar) {
-                    $this->reportar('Guardamos resultados en cache "' . $this->cache_llave . '" por ' . $this->cache_ttl . ' seg.');
+                    $this->reportar('Guardamos resultados en cache "' . $this->cacheLlave . '" por ' . $this->cacheTtl . ' seg.');
                 }
             }
 
@@ -394,11 +389,11 @@ class Relacional
 
         // Ejecutamos la sentencia
         $ti = microtime(true);
-        $resultado = $this->componente_pdo->exec($this->sentencia);
+        $resultado = $this->componentePdo->exec($this->sentencia);
 
         if ($resultado === false) {
             if ($this->depurar) {
-                throw new \RuntimeException('La sentencia [ ' . $this->sentencia . ' ] dió el siguiente error: ' . $this->componente_pdo->errorInfo() . '.', 103);
+                throw new \RuntimeException('La sentencia [ ' . $this->sentencia . ' ] dió el siguiente error: ' . $this->componentePdo->errorInfo() . '.', 103);
             }
 
             return false;
@@ -419,7 +414,7 @@ class Relacional
      */
     public function ultimoIdInsertado(): string
     {
-        return $this->componente_pdo->lastInsertId();
+        return $this->componentePdo->lastInsertId();
     }
 
 
@@ -439,7 +434,7 @@ class Relacional
             throw new \InvalidArgumentException('La sentencia a preparar se encuentra vacia.');
         }
 
-        return $this->componente_pdo->prepare($this->sentencia);
+        return $this->componentePdo->prepare($this->sentencia);
     }
 
     /**
@@ -449,7 +444,7 @@ class Relacional
      */
     public function obtenerPdo(): \PDO
     {
-        return $this->componente_pdo;
+        return $this->componentePdo;
     }
 
     // METODOS PARA MANEJAR CACHE DE CONSULTAS -------------------------------------------------------------------------
@@ -461,7 +456,7 @@ class Relacional
      */
     public function registrarCache(AdaptadorInterface $cache)
     {
-        $this->componente_cache = $cache;
+        $this->componenteCache = $cache;
     }
 
     /**
@@ -477,22 +472,22 @@ class Relacional
      */
     public function cache(string $llave, int $ttl = 3600, bool $sobrescribir = false): self
     {
-        if (!isset($this->componente_cache)) {
+        if (!isset($this->componenteCache)) {
             throw new \RuntimeException('Pretende usar el componente de cache pero no fue registrado.');
         }
 
-        $this->cache_activado = true;
-        $this->cache_ttl = $ttl;
-        $this->cache_llave = $llave;
-        $this->cache_sobrescribir = $sobrescribir;
-        $this->cache_resultado = null;
+        $this->cacheActivado = true;
+        $this->cacheTtl = $ttl;
+        $this->cacheLlave = $llave;
+        $this->cacheSobrescribir = $sobrescribir;
+        $this->cacheResultado = null;
 
-        if (!$this->cache_sobrescribir) {
+        if (!$this->cacheSobrescribir) {
             if ($this->depurar) {
                 $this->reportar('Obtenemos datos desde cache "' . $llave . '" con expiraci&oacute;n de ' . $ttl . ' seg.');
             }
 
-            $this->cache_resultado = $this->componente_cache->obtener($llave);
+            $this->cacheResultado = $this->componenteCache->obtener($llave);
         }
 
         return $this;
@@ -508,7 +503,7 @@ class Relacional
      */
     public function iniciarTransaccion(): bool
     {
-        return $this->componente_pdo->beginTransaction();
+        return $this->componentePdo->beginTransaction();
     }
 
     /**
@@ -518,7 +513,7 @@ class Relacional
      */
     public function terminarTransaccion(): bool
     {
-        return $this->componente_pdo->commit();
+        return $this->componentePdo->commit();
     }
 
     /**
@@ -528,7 +523,7 @@ class Relacional
      */
     public function enTransaccion(): bool
     {
-        return $this->componente_pdo->inTransaction();
+        return $this->componentePdo->inTransaction();
     }
 
     /**
@@ -538,7 +533,7 @@ class Relacional
      */
     public function cancelarTransaccion(): bool
     {
-        return $this->componente_pdo->rollback();
+        return $this->componentePdo->rollback();
     }
 
 
@@ -569,10 +564,10 @@ class Relacional
     private function reiniciarConsulta()
     {
         $this->sentencia = null;
-        $this->cache_activado = false;
-        $this->cache_ttl = null;
-        $this->cache_llave = null;
-        $this->cache_resultado = null;
+        $this->cacheActivado = false;
+        $this->cacheTtl = null;
+        $this->cacheLlave = null;
+        $this->cacheResultado = null;
     }
 
     /**

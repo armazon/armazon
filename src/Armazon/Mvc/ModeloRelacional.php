@@ -153,9 +153,9 @@ abstract class ModeloRelacional extends \stdClass
             }
 
             return true;
-        } else {
-            return false;
         }
+
+        return false;
     }
 
     /**
