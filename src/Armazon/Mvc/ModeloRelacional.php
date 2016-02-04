@@ -3,18 +3,19 @@
 namespace Armazon\Mvc;
 
 use Armazon\Nucleo\Aplicacion;
+use SebastianBergmann\GlobalState\RuntimeException;
 
 /**
  * Capa Modelo del patrón MVC.
  */
 abstract class ModeloRelacional extends \stdClass
 {
-    // TODO: Cambiar completamente la estructura estatica por normal, debido a la falta de limpieza en Swoole
+    // TODO: Cambiar estructura estatica a normal debido a falta de limpieza en Swoole y AMPHP, listo pero falta prueba
 
     public $campos;
-    public $nombre_tabla;
-    public $llave_primaria = 'id';
-    public $llave_primaria_autonum = true;
+    public $nombreTabla;
+    public $llavePrimaria = 'id';
+    public $llavePrimariaAutonum = true;
 
     /**
      * Rellena los campos usando un arreglo.
@@ -41,10 +42,11 @@ abstract class ModeloRelacional extends \stdClass
      */
     public static function buscarPrimeroPorCampo(string $campo, $valor, string $tipo = 'auto')
     {
+        // Preparamos variables requeridas
         $metadatos = get_class_vars(static::class);
 
         return Aplicacion::instanciar()->obtenerBdRelacional()
-            ->seleccionar('*', $metadatos['nombre_tabla'])
+            ->seleccionar('*', $metadatos['nombreTabla'])
             ->donde([$campo . '|' . $tipo => $valor])
             ->limitar(1)
             ->obtenerPrimero(static::class);
@@ -58,24 +60,27 @@ abstract class ModeloRelacional extends \stdClass
      */
     public static function buscar($filtro = null)
     {
+        // Preparamos variables requeridas
         $metadatos = get_class_vars(static::class);
+        $bd = Aplicacion::instanciar()->obtenerBdRelacional();
 
         if (is_int($filtro) || is_string($filtro)) {
-            return Aplicacion::instanciar()->obtenerBdRelacional()
-                ->seleccionar('*', $metadatos['nombre_tabla'])
-                ->donde([$metadatos['llave_primaria'] . '|' . $metadatos['campos'][$metadatos['llave_primaria']]['tipo'] => $filtro])
+            return $bd
+                ->seleccionar('*', $metadatos['nombreTabla'])
+                ->donde([$metadatos['llavePrimaria'] . '|' . $metadatos['campos'][$metadatos['llavePrimaria']]['tipo'] => $filtro])
                 ->limitar(1)
                 ->obtenerPrimero(static::class);
-        } elseif (is_array($filtro) && $filtro !== []) {
-            return Aplicacion::instanciar()->obtenerBdRelacional()
-                ->seleccionar('*', $metadatos['nombre_tabla'])
+        } elseif (is_array($filtro) && count($filtro) > 0) {
+            return $bd
+                ->seleccionar('*', $metadatos['nombreTabla'])
                 ->donde($filtro)
-                ->obtener($metadatos['llave_primaria'], null, static::class);
-        } else {
-            return Aplicacion::instanciar()->obtenerBdRelacional()
-                ->seleccionar('*', $metadatos['nombre_tabla'])
-                ->obtener($metadatos['llave_primaria'], null, static::class);
+                ->obtener($metadatos['llavePrimaria'], null, static::class);
         }
+
+        return $bd
+            ->seleccionar('*', $metadatos['nombreTabla'])
+            ->obtener($metadatos['llavePrimaria'], null, static::class);
+
     }
 
     /**
@@ -88,41 +93,43 @@ abstract class ModeloRelacional extends \stdClass
      */
     public static function contar(array $filtro = null)
     {
+        // Preparamos variables requeridas
         $metadatos = get_class_vars(static::class);
 
         $temp = Aplicacion::instanciar()->obtenerBdRelacional()
-            ->seleccionar('COUNT(*) as cantidad', $metadatos['nombre_tabla'])
+            ->seleccionar('COUNT(*) as c', $metadatos['nombreTabla'])
             ->donde($filtro)
             ->obtenerPrimero();
 
         if ($temp === false) {
             return false;
         } else {
-            return $temp['cantidad'];
+            return $temp['c'];
         }
     }
 
     /**
      * Inserta un registro del modelo usando las propiedades modificadas.
+     *
+     * @throws \RuntimeException
      */
     public function insertar()
     {
         // Preparamos variables a usar
-        $metadatos = get_class_vars(static::class);
         $parametros = [];
-        $campos_faltantes = [];
-        $llave_primaria = (array) $metadatos['llave_primaria'];
+        $camposFaltantes = [];
+        $bd = Aplicacion::instanciar()->obtenerBdRelacional();
 
         // Hacemos recorrido de campos
-        foreach ($metadatos['campos'] as $campo => $meta) {
+        foreach ($this->campos as $campo => $meta) {
 
             // Verificamos si el campo es llave
-            $es_llave = in_array($campo, $llave_primaria);
+            $es_llave = in_array($campo, $this->llavePrimaria);
 
             // Validamos si el campo es requerido
             if (($meta['requerido'] || $es_llave) && (!isset($this->{$campo}) || $this->{$campo} === '')) {
-                if (!($es_llave && $metadatos['llave_primaria_autonum'])) {
-                    $campos_faltantes[] = $campo;
+                if (!($es_llave && $this->llavePrimariaAutonum)) {
+                    $camposFaltantes[] = $campo;
                     continue;
                 }
             }
@@ -136,13 +143,13 @@ abstract class ModeloRelacional extends \stdClass
         }
 
         // Validamos presencia de campos requeridos
-        if ($campos_faltantes) {
-            throw new \InvalidArgumentException('Faltan los campos requeridos [' . implode(', ', $campos_faltantes) . ']', 202);
+        if ($camposFaltantes) {
+            throw new \RuntimeException('Faltan los campos requeridos [' . implode(', ', $camposFaltantes) . ']');
         }
 
-        if (Aplicacion::instanciar()->obtenerBdRelacional()->insertar($metadatos['nombre_tabla'], $parametros)->ejecutar()) {
-            if (static::$llave_primaria_autonum) {
-                $this->{$metadatos['llave_primaria']} = Aplicacion::instanciar()->obtenerBdRelacional()->ultimoIdInsertado();
+        if ($bd->insertar($this->nombreTabla, $parametros)->ejecutar()) {
+            if ($this->llavePrimariaAutonum) {
+                $this->{$this->llavePrimaria} = $bd->ultimoIdInsertado();
             }
 
             return true;
@@ -153,23 +160,25 @@ abstract class ModeloRelacional extends \stdClass
 
     /**
      * Actualiza registro del modelo filtrando con llaves.
+     *
+     * @throws \RuntimeException
      */
     public function actualizar()
     {
         // Preparamos variables a usar
         $filtro = [];
         $parametros = [];
-        $campos_faltantes = [];
-        $llave_primaria = (array) static::$llave_primaria;
+        $camposFaltantes = [];
+        $llavePrimaria = (array)$this->llavePrimaria;
 
         // Hacemos recorrido de campos
-        foreach (static::$campos as $campo => $meta) {
+        foreach ($this->campos as $campo => $meta) {
             // Verificamos si el campo es llave
-            $es_llave = in_array($campo, $llave_primaria);
+            $es_llave = in_array($campo, $llavePrimaria);
 
             // Validamos si el campo es requerido
             if (($meta['requerido'] || $es_llave) && (!isset($this->{$campo}) || $this->{$campo} === '')) {
-                $campos_faltantes[] = $campo;
+                $camposFaltantes[] = $campo;
                 continue;
             }
 
@@ -188,44 +197,46 @@ abstract class ModeloRelacional extends \stdClass
 
         // Validamos presencia de campos en filtro
         if (!$filtro) {
-            throw new \InvalidArgumentException('Falta rellenar los campos de llave primaria.', 201);
+            throw new \RuntimeException('Falta rellenar los campos de llave primaria.', 201);
         }
 
         // Validamos presencia de campos requeridos
-        if ($campos_faltantes) {
-            throw new \InvalidArgumentException('Faltan los campos requeridos [' . implode(', ', $campos_faltantes) . '].', 202);
+        if ($camposFaltantes) {
+            throw new \RuntimeException('Faltan los campos requeridos [' . implode(', ', $camposFaltantes) . '].', 202);
         }
 
         return Aplicacion::instanciar()->obtenerBdRelacional()
-            ->actualizar(static::$nombre_tabla, $parametros)
+            ->actualizar($this->nombreTabla, $parametros)
             ->donde($filtro)
             ->ejecutar();
     }
 
     /**
      * Elimina registros filtrando con propiedades alteradas.
+     *
+     * @throws \RuntimeException
      */
     public function eliminar()
     {
         // Preparamos variables a usar
         $filtro = [];
-        $llave_primaria = (array) static::$llave_primaria;
+        $llavePrimaria = (array)$this->llavePrimaria;
 
         // Hacemos recorrido de campos
         foreach ($this->campos as $campo => $meta) {
             // Agregamos campo a los parametros de filtro según el caso
-            if (in_array($campo, $llave_primaria) && isset($this->{$campo}) && $this->{$campo} !== '') {
+            if (in_array($campo, $llavePrimaria) && isset($this->{$campo}) && $this->{$campo} !== '') {
                 $filtro[$campo . '|' . $meta['tipo']] = $this->{$campo};
             }
         }
 
         // Validamos presencia de campos en filtro
         if (!$filtro) {
-            throw new \InvalidArgumentException('Falta rellenar los campos de llave primaria.', 201);
+            throw new \RuntimeException('Falta rellenar los campos de llave primaria.');
         }
 
         return Aplicacion::instanciar()->obtenerBdRelacional()
-            ->eliminar(static::$nombre_tabla)
+            ->eliminar($this->nombreTabla)
             ->donde($filtro)
             ->ejecutar();
     }
