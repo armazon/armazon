@@ -4,8 +4,6 @@ namespace Armazon\Http;
 
 /**
  * Envoltura de respuesta http.
- *
- * @version 0.1
  */
 class Respuesta
 {
@@ -27,18 +25,34 @@ class Respuesta
         'gzip' => 'application/x-gzip',
         'pdf' => 'application/pdf',
     ];
-    public $cabeceras = [
+    protected $cabeceras = [
         'X-Powered-By' => 'Armazon'
     ];
-    private $codificacion = 'utf-8';
-    private $estado_http = 200;
-    private $tipo = 'html';
-    private $enviado = false;
-    private $contenido;
+    protected $codificacion = 'utf-8';
+    protected $estadoHttp = 200;
+    protected $tipoContenido = 'html';
+    protected $contenido;
+    protected $enviado = false;
 
-    public function definirCabecera($nombre, $valor)
+    /**
+     * Agrega una cabecera a la respuesta.
+     *
+     * @param string $nombre
+     * @param string $valor
+     */
+    public function definirCabecera(string $nombre, string $valor)
     {
         $this->cabeceras[$nombre] = $valor;
+    }
+
+    /**
+     * Devuelve las cabeceras de la respuesta.
+     *
+     * @return array
+     */
+    public function obtenerCabeceras(): array
+    {
+        return $this->cabeceras;
     }
 
     /**
@@ -48,31 +62,39 @@ class Respuesta
         $this->$codificacion = $codificacion;
     }
 
-    /**
-     * @param int $estado
-     */
-    public function definirEstadoHttp($estado) {
-        $this->estado_http = $estado;
+    public function obtenerCodificacion(): string
+    {
+        return $this->codificacion;
     }
 
-    /**
-     * @param string $contenido
-     */
-    public function definirContenido($contenido) {
+    public function definirEstadoHttp(int $estado) {
+        $this->estadoHttp = $estado;
+    }
+
+    public function obtenerEstadoHttp():int {
+        return $this->estadoHttp;
+    }
+
+    public function definirContenido(string $contenido) {
         $this->contenido = $contenido;
     }
 
-    public function obtenerContenido() {
+    public function obtenerContenido(): string {
         return $this->contenido;
     }
 
-    public function definirTipo($tipo)
+    public function definirTipoContenido($tipo)
     {
-        $this->tipo = $tipo;
+        $this->tipoContenido = $tipo;
+    }
+
+    public function obtenerTipoContenido(): string
+    {
+        return $this->tipoContenido;
     }
 
     /**
-     * Envia la respuesta al navegador
+     * Envia la respuesta al navegador usando la forma clásica.
      *
      * @return bool
      */
@@ -82,13 +104,13 @@ class Respuesta
             return false;
         }
 
-        http_response_code($this->estado_http);
+        http_response_code($this->estadoHttp);
 
         foreach ($this->cabeceras as $cabecera => $valor) {
             header($cabecera . ': ' . $valor);
         }
 
-        header('Content-Type: ' . $this->tipos_mime[$this->tipo] . '; charset=' . $this->codificacion);
+        header('Content-Type: ' . $this->tipos_mime[$this->tipoContenido] . '; charset=' . $this->codificacion);
 
         if (!empty($this->contenido)) {
             echo $this->contenido;
@@ -97,16 +119,13 @@ class Respuesta
         return $this->enviado = true;
     }
 
-    /**
-     * @return bool
-     */
-    public function fueEnviado()
+    public function fueEnviado(): bool
     {
         return $this->enviado;
     }
 
     /**
-     * Envia un archivo al usuario.
+     * Envia un archivo al navegador.
      *
      * @param string $nombre
      */
@@ -126,13 +145,13 @@ class Respuesta
      * Redirige el navegador a la URL especificada.
      *
      * @param string $url
-     * @param int $estado_http
+     * @param int $estadoHttp
      * @return self
      */
-    public function redirigir($url, $estado_http = 302)
+    public function redirigir($url, $estadoHttp = 302)
     {
         $this->definirCabecera('Location', $url);
-        $this->definirEstadoHttp($estado_http);
+        $this->definirEstadoHttp($estadoHttp);
         $this->definirContenido(null);
         return $this;
     }
