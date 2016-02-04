@@ -2,12 +2,12 @@
 
 namespace Armazon\Servidor;
 
-use Armazon\Nucleo\Aplicacion;
+use Armazon\Http\Peticion;
 
-class Swoole implements ServidorInterface
+class Swoole extends Base
 {
-    /** @var Aplicacion */
-    public $app;
+    public $usarDemonio = true;
+    public $archivoRegistros;
 
     private function detectarNucleosCPU(): int
     {
@@ -38,23 +38,106 @@ class Swoole implements ServidorInterface
         return $cantidad_cpu;
     }
 
-    public function __construct(Aplicacion $app)
+    public function alIniciar($servidor)
     {
-        // Inyectamos la aplicación
-        $this->app = $app;
+        cli_set_process_title($this->nombre . ': master');
+
+        if ($this->archivoPid) {
+            file_put_contents($this->archivoPid, $servidor->master_pid);
+        }
+    }
+
+    public function alDetener()
+    {
+        if ($this->archivoPid) {
+            unlink($this->archivoPid);
+        }
+    }
+
+    public function alIniciarManager($servidor)
+    {
+        cli_set_process_title($this->nombre . ': manager');
+    }
+
+    public function alIniciarTrabajador()
+    {
+        cli_set_process_title($this->nombre . ': worker');
+    }
+
+    public function alDetenerTrabajador()
+    {
+    }
+
+    public function alAsignarTarea($servidor, $idTarea, $deId, $datos)
+    {
+    }
+
+    public function alTerminarTarea($servidor, $idTarea, $datos)
+    {
+    }
+
+    public function alRecibirPeticion(\swoole_http_request $req, \swoole_http_response $res)
+    {
+        // Instanciamos la petición
+        $peticion = Peticion::crearDesdeSwoole($req);
+
+        // Obtenemos la respuesta procesando la petición
+        $respuesta = $this->app->procesarPetición($peticion);
+
+        // Obtenemos contenido
+        $contenido = $respuesta->obtenerContenido();
+
+        foreach ($respuesta->obtenerCabeceras() as $nombre => $valor) {
+            $nombre = str_replace(' ', '-', ucwords(str_replace('-', ' ', $nombre)));
+            $res->header($nombre, $valor);
+        }
+        $res->header('Content-Length', strlen($contenido));
+
+        // TODO: Implementar la devolución de las galletas
+
+        // Definimos estado http
+        $res->status($respuesta->obtenerEstadoHttp());
+
+        // Enviamos la respuesta al navegador
+        $res->end($contenido);
     }
 
     public function iniciar()
     {
-        $swoole = new \swoole_http_server($host, $puerto, SWOOLE_PROCESS);
+        // Instanciamos servidor Swoole
+        $servidor = new \swoole_http_server($this->host, $this->puerto, SWOOLE_PROCESS);
 
-        $swoole->on('request', function(\swoole_http_request $request, \swoole_http_response $response) {
-            $response->end("<h1>hello swoole</h1>");
-        });
-    }
+        // Asignamos los eventos del servidor
+        $servidor->on('start', [$this, 'alIniciar']);
+        $servidor->on('shutdown', [$this, 'alDetenerse']);
+        $servidor->on('managerStart', [$this, 'alIniciarManager']);
+        $servidor->on('workerStart', [$this, 'alIniciarTrabajador']);
+        $servidor->on('workerStop', [$this, 'alDetenerTrabajador']);
+        $servidor->on('request', [$this, 'alRecibirPeticion']);
 
-    public function correr()
-    {
-        // TODO: Implementar metodo correr().
+        if (method_exists($this, 'alAsignarTarea')) {
+            $servidor->on('task', [$this, 'alAsignarTarea']);
+        }
+        if (method_exists($this, 'alTerminarTarea')) {
+            $servidor->on('finish', [$this, 'alTerminarTarea']);
+        }
+
+        // Detectamos la cantidad de nucleos en el procesador
+        $numCpu = $this->detectarNucleosCPU();
+
+        // Preparamos configuraciones del servidor
+        $config = [];
+        $config['max_request'] = 1000;
+        $config['daemonize'] = $this->usarDemonio;
+        $config['worker_num'] = $numCpu;
+        $config['user'] = $this->usuario;
+        $config['group'] = $this->grupo;
+        $config['task_worker_max'] = $numCpu;
+
+        // Pasamos configuraciones a servidor
+        $servidor->set($config);
+
+        // Iniciamos el servidor
+        $servidor->start();
     }
 }
