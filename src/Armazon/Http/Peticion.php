@@ -18,72 +18,123 @@ class Peticion
     public $consulta;
     public $cliente_ip;
     public $cabeceras = [];
-    public $parametros_get = [];
+    public $parametrosGet = [];
     public $parametros = [];
     public $galletas;
     public $archivos;
 
     /**
-     * Saca los parámetros de cadenas en formato formulario url.
+     * Procesa y devuelve los parámetros de la cadena según el formato.
      *
      * @param string $cadena
+     * @param string $formato
+     * @param array $porDefecto
      *
      * @return array
      */
-    public function sacarParametros(string $cadena): array
-    {
-        $resultado = [];
+    public static function procesarParametros(
+        string $cadena,
+        string $formato = 'application/x-www-form-urlencoded',
+        $porDefecto = []
+    ): array {
+        $resultado = $porDefecto;
 
-        if (strpos($cadena, '?') !== false) {
-            $cadena = parse_url($cadena, PHP_URL_QUERY);
+        if ('application/x-www-form-urlencoded' == $formato) {
+            $resultado = [];
+
+            // Excluimos contenido que no sea usable
+            if (strpos($cadena, '?') !== false) {
+                $cadena = parse_url($cadena, PHP_URL_QUERY);
+            }
+
+            // Separamos los parametros
+            $pares = explode('&', $cadena);
+
+            foreach ($pares as $par) {
+                $temp = explode('=', $par, 2);
+                $nombre = rawurldecode($temp[0]);
+                $temp2 = strpos($nombre, '[]');
+                if ($temp2 !== false) {
+                    $nombre = substr($nombre, 0, $temp2);
+                }
+                $valor = (isset($temp[1])) ? rawurldecode($temp[1]) : '';
+
+                // Si el nombre ya existe pegamos el valor como matriz
+                if (isset($resultado[$nombre])) {
+                    # Pegamos varios valores en una matriz
+                    if (is_array($resultado[$nombre])) {
+                        $resultado[$nombre][] = $valor;
+                    } else {
+                        $resultado[$nombre] = [$resultado[$nombre], $valor];
+                    }
+
+                    // de lo contrario, sólo pegamos el valor simple
+                } else {
+                    $resultado[$nombre] = $valor;
+                }
+            }
         }
 
-        # Separamos los parametros
-        $pares = explode('&', $cadena);
-
-        foreach ($pares as $par) {
-            $temp = explode('=', $par, 2);
-            $nombre = rawurldecode($temp[0]);
-            $temp2 = strpos($nombre, '[]');
-            if ($temp2 !== false) {
-                $nombre = substr($nombre, 0, $temp2);
-            }
-            $valor = (isset($temp[1])) ? rawurldecode($temp[1]) : '';
-
-            # Si el nombre ya existe pegamos el valor como matriz
-            if (isset($resultado[$nombre])) {
-                # Pegamos varios valores en una matriz
-                if (is_array($resultado[$nombre])) {
-                    $resultado[$nombre][] = $valor;
-                } else {
-                    $resultado[$nombre] = [$resultado[$nombre], $valor];
-                }
-
-                # de lo contrario, sólo pegamos el valor simple
-            } else {
-                $resultado[$nombre] = $valor;
-            }
+        if ('application/json' == $formato) {
+            $resultado = json_decode($cadena, true);
         }
 
         return $resultado;
     }
 
     /**
+     * Prepara el formato en que se presenta los archivos subidos.
+     *
+     * @link http://php.net/manual/es/reserved.variables.files.php#106608
+     *
+     * @param array $archivos
+     * @param bool $inicio
+     *
+     * @return array
+     */
+    public static function prepararArchivos(array $archivos, bool $inicio = true): array
+    {
+        $final = [];
+        foreach ($archivos as $nombre => $archivo) {
+            // Definimos sub nombre
+            $subNombre = $nombre;
+            if ($inicio) {
+                $subNombre = $archivo['name'];
+            }
+
+            $final[$nombre] = $archivo;
+            if (is_array($subNombre)) {
+                foreach (array_keys($subNombre) as $llave) {
+                    $final[$nombre][$llave] = array(
+                        'name' => $archivo['name'][$llave],
+                        'type' => $archivo['type'][$llave],
+                        'tmp_name' => $archivo['tmp_name'][$llave],
+                        'error' => $archivo['error'][$llave],
+                        'size' => $archivo['size'][$llave],
+                    );
+                    $final[$nombre] = self::prepararArchivos($final[$nombre], false);
+                }
+            }
+        }
+
+        return $final;
+    }
+
+    /**
+     * Crea una instancia de petición usando como base las variables globales de PHP.
+     *
      * @return self
      */
-    public static function crearDesdeGlobales()
+    public static function crearDesdeGlobales(): self
     {
         // Preparamos Metodo
-
         if (isset($_SERVER['REQUEST_METHOD'])) {
             $metodo = $_SERVER['REQUEST_METHOD'];
         } else {
             $metodo = 'GET';
         }
 
-
         // Preparamos URL
-
         $url = '';
         if (!empty($_SERVER['HTTPS'])) {
             if ($_SERVER['HTTPS'] !== 'off') {
@@ -106,24 +157,13 @@ class Peticion
         }
         $url .= $_SERVER['REQUEST_URI'];
 
-
         // Preparamos parámetros según método
-
         $parametros = [];
-        if ($metodo == 'POST') {
-            $parametros = $_POST;
-        } elseif ($metodo != 'GET') {
-            $temp = file_get_contents('php://input');
-            if (function_exists('mb_parse_str')) {
-                mb_parse_str($temp, $parametros);
-            } else {
-                parse_str($temp, $parametros);
-            }
+        if ($metodo != 'GET' && isset($_SERVER["CONTENT_TYPE"])) {
+            $parametros = self::procesarParametros(file_get_contents('php://input'), $_SERVER["CONTENT_TYPE"], $_POST);
         }
 
-
         // Preparamos cabeceras
-
         $cabeceras = [];
         foreach ($_SERVER as $nombre => $valor) {
             if (substr($nombre, 0, 5) == 'HTTP_') {
@@ -136,14 +176,23 @@ class Peticion
             }
         }
 
+        // Preparamos galletas
+        $galletas = [];
+        if (!empty($_COOKIE)) {
+            $galletas = $_COOKIE;
+        }
+
+        // Preparamos archivos
+        $archivos = [];
+        if (!empty($_FILES)) {
+            $archivos = self::prepararArchivos($_FILES);
+        }
 
         // Iniciamos instancia de petición con los datos ya preparados
-
-        $peticion = new Peticion($url, $metodo, $parametros, $cabeceras, $_COOKIE, $_FILES);
+        $peticion = new Peticion($url, $metodo, $parametros, $cabeceras, $galletas, $archivos);
 
 
         // Preparamos IP del cliente
-
         if (isset($_SERVER['HTTP_CLIENT_IP'])) {
             $peticion->cliente_ip = $_SERVER['HTTP_CLIENT_IP'];
         } elseif (isset($_SERVER['HTTP_X_FORWARDED_FOR']) && filter_var($_SERVER['HTTP_X_FORWARDED_FOR'], FILTER_VALIDATE_IP)) {
@@ -154,7 +203,78 @@ class Peticion
 
 
         // Retornamos instancia iniciada
+        return $peticion;
+    }
 
+    /**
+     * Crea una isntancia de petición usando como base la petición de Swoole.
+     *
+     * @param \swoole_http_request $req
+     *
+     * @return self
+     */
+    public static function crearDesdeSwoole(\swoole_http_request $req): self
+    {
+        // Preparamos Metodo
+        $metodo = $req->server['request_method'];
+
+        // Preparamos URL
+        $url = '';
+        if (!empty($req->server['https'])) {
+            if ($req->server['https'] !== 'off') {
+                $url .= 'https';
+            } else {
+                $url .= 'http';
+            }
+        } else {
+            if ($req->server['server_port'] == 443) {
+                $url .= 'https';
+            } else {
+                $url .= 'http';
+            }
+        }
+        $url .= '://' . $req->header['host'];
+        $url .= $req->server['request_uri'];
+        $url .= '?' . $req->server['query_string'];
+
+        // Preparamos parámetros según método
+        $parametros = [];
+        if (!empty($req->post)) {
+            $parametros = $req->post;
+        }
+        if ($metodo != 'GET' && isset($req->header['content-type'])) {
+            $parametros = self::procesarParametros($req->rawContent(), $req->header['content-type'], $parametros);
+        }
+
+        // Preparamos cabeceras
+        $cabeceras = $req->header;
+
+        // Preparamos galletas
+        $galletas = [];
+        if (!empty($req->cookie)) {
+            $galletas = $req->cookie;
+        }
+
+        // Preparamos arhivos
+        $archivos = [];
+        if (!empty($req->files)) {
+            $archivos = $req->files;
+        }
+
+        // Iniciamos instancia de petición con los datos ya preparados
+        $peticion = new Peticion($url, $metodo, $parametros, $cabeceras, $galletas, $archivos);
+
+        // Preparamos IP del cliente
+        $peticion->cliente_ip = $req->server['remote_addr'];
+        if (isset($req->server['x-client-ip'])) {
+            $peticion->cliente_ip = $req->server['x-client-ip'];
+        } elseif (isset($req->server['x-real-ip'])) {
+            $peticion->cliente_ip = $req->server['x-real-ip'];
+        } elseif (isset($_SERVER['x-forwarded-for'])) {
+            $peticion->cliente_ip = trim(explode(',', $_SERVER['x-forwarded-for'])[0]);
+        }
+
+        // Retornamos instancia iniciada
         return $peticion;
     }
 
@@ -164,8 +284,8 @@ class Peticion
         array $parametros = null,
         array $cabeceras = null,
         array $galletas = null,
-        array $archivos = null)
-    {
+        array $archivos = null
+    ) {
         // Procesamos URL
         $url_procesada = parse_url($url);
 
@@ -202,7 +322,7 @@ class Peticion
         // Preparamos Query
         if (isset($url_procesada['query'])) {
             $this->consulta = $url_procesada['query'];
-            $this->parametros_get = $this->sacarParametros($url_procesada['query']);
+            $this->parametrosGet = self::procesarParametros($url_procesada['query']);
         }
 
         // Preparamos Uri
@@ -250,13 +370,23 @@ class Peticion
      * Obtiene cabecera solicitada dentro de la petición, en caso de exitir.
      *
      * @param string $nombre
-     * @param mixed $por_defecto
+     * @param mixed $porDefecto
      *
      * @return mixed
      */
-    public function obtenerCabecera(string $nombre, $por_defecto = null)
+    public function obtenerCabecera(string $nombre, $porDefecto = null)
     {
-        return isset($this->cabeceras[$nombre]) ? $this->cabeceras[$nombre] : $por_defecto;
+        return isset($this->cabeceras[$nombre]) ? $this->cabeceras[$nombre] : $porDefecto;
+    }
+
+    /**
+     * Devuelve las cabeceras de la petición.
+     *
+     * @return array
+     */
+    public function obtenerCabeceras()
+    {
+        return $this->cabeceras;
     }
 
     /**
@@ -288,25 +418,6 @@ class Peticion
     }
 
     /**
-     * Detecta el idioma del navegador del usuario.
-     *
-     * @param string $por_defecto
-     *
-     * @return string
-     */
-    public function detectarIdioma(string $por_defecto = 'es'): string
-    {
-        if (isset($this->cabeceras['Accept-Language'])) {
-            // TODO: Revisar la función locale_accept_from_http en el componente Peticion, creo que no funciona sin la extensión Intl.
-            if (empty($idioma = locale_accept_from_http($this->cabeceras['Accept-Language']))) {
-                return $idioma;
-            }
-        }
-
-        return $por_defecto;
-    }
-
-    /**
      * Valida y sanea un valor según el filtro aplicado.
      *
      * @param mixed $valor
@@ -317,24 +428,24 @@ class Peticion
     public function filtrarVar($valor, string $filtro)
     {
         if ($filtro == 'email') {
-            $dot_string = '(?:[A-Za-z0-9!#$%&*+=?^_`{|}~\'\\/-]|(?<!\\.|\\A)\\.(?!\\.|@))';
-            $quoted_string = '(?:\\\\\\\\|\\\\"|\\\\?[A-Za-z0-9!#$%&*+=?^_`{|}~()<>[\\]:;@,. \'\\/-])';
-            $ipv4_part = '(?:[0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])';
-            $ipv6_part = '(?:[A-fa-f0-9]{1,4})';
-            $fqdn_part = '(?:[A-Za-z](?:[A-Za-z0-9-]{0,61}?[A-Za-z0-9])?)';
-            $ipv4 = "(?:(?:{$ipv4_part}\\.){3}{$ipv4_part})";
+            $dotString = '(?:[A-Za-z0-9!#$%&*+=?^_`{|}~\'\\/-]|(?<!\\.|\\A)\\.(?!\\.|@))';
+            $quotedString = '(?:\\\\\\\\|\\\\"|\\\\?[A-Za-z0-9!#$%&*+=?^_`{|}~()<>[\\]:;@,. \'\\/-])';
+            $ipv4Part = '(?:[0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])';
+            $ipv6Part = '(?:[A-fa-f0-9]{1,4})';
+            $fqdnPart = '(?:[A-Za-z](?:[A-Za-z0-9-]{0,61}?[A-Za-z0-9])?)';
+            $ipv4 = "(?:(?:{$ipv4Part}\\.){3}{$ipv4Part})";
             $ipv6 = '(?:' .
-                "(?:(?:{$ipv6_part}:){7}(?:{$ipv6_part}|:))" . '|' .
-                "(?:(?:{$ipv6_part}:){6}(?::{$ipv6_part}|:{$ipv4}|:))" . '|' .
-                "(?:(?:{$ipv6_part}:){5}(?:(?::{$ipv6_part}){1,2}|:{$ipv4}|:))" . '|' .
-                "(?:(?:{$ipv6_part}:){4}(?:(?::{$ipv6_part}){1,3}|(?::{$ipv6_part})?:{$ipv4}|:))" . '|' .
-                "(?:(?:{$ipv6_part}:){3}(?:(?::{$ipv6_part}){1,4}|(?::{$ipv6_part}){0,2}:{$ipv4}|:))" . '|' .
-                "(?:(?:{$ipv6_part}:){2}(?:(?::{$ipv6_part}){1,5}|(?::{$ipv6_part}){0,3}:{$ipv4}|:))" . '|' .
-                "(?:(?:{$ipv6_part}:){1}(?:(?::{$ipv6_part}){1,6}|(?::{$ipv6_part}){0,4}:{$ipv4}|:))" . '|' .
-                "(?::(?:(?::{$ipv6_part}){1,7}|(?::{$ipv6_part}){0,5}:{$ipv4}|:))" .
+                "(?:(?:{$ipv6Part}:){7}(?:{$ipv6Part}|:))" . '|' .
+                "(?:(?:{$ipv6Part}:){6}(?::{$ipv6Part}|:{$ipv4}|:))" . '|' .
+                "(?:(?:{$ipv6Part}:){5}(?:(?::{$ipv6Part}){1,2}|:{$ipv4}|:))" . '|' .
+                "(?:(?:{$ipv6Part}:){4}(?:(?::{$ipv6Part}){1,3}|(?::{$ipv6Part})?:{$ipv4}|:))" . '|' .
+                "(?:(?:{$ipv6Part}:){3}(?:(?::{$ipv6Part}){1,4}|(?::{$ipv6Part}){0,2}:{$ipv4}|:))" . '|' .
+                "(?:(?:{$ipv6Part}:){2}(?:(?::{$ipv6Part}){1,5}|(?::{$ipv6Part}){0,3}:{$ipv4}|:))" . '|' .
+                "(?:(?:{$ipv6Part}:){1}(?:(?::{$ipv6Part}){1,6}|(?::{$ipv6Part}){0,4}:{$ipv4}|:))" . '|' .
+                "(?::(?:(?::{$ipv6Part}){1,7}|(?::{$ipv6Part}){0,5}:{$ipv4}|:))" .
                 ')';
-            $fqdn = "(?:(?:{$fqdn_part}\\.)+?{$fqdn_part})";
-            $local = "({$dot_string}++|(\"){$quoted_string}++\")";
+            $fqdn = "(?:(?:{$fqdnPart}\\.)+?{$fqdnPart})";
+            $local = "({$dotString}++|(\"){$quotedString}++\")";
             $domain = "({$fqdn}|\\[{$ipv4}]|\\[{$ipv6}]|\\[{$fqdn}])";
             $pattern = "/\\A{$local}@{$domain}\\z/";
             return preg_match($pattern, $valor, $matches) &&
@@ -349,11 +460,7 @@ class Peticion
         }
 
         if ($filtro == 'flotante') {
-            if (filter_var($valor, FILTER_VALIDATE_FLOAT, FILTER_FLAG_ALLOW_THOUSAND)) {
-                return filter_var($valor, FILTER_SANITIZE_NUMBER_FLOAT);
-            } else {
-                return false;
-            }
+            return filter_var($valor, FILTER_VALIDATE_FLOAT);
         }
 
         if ($filtro == 'ip') {
@@ -379,47 +486,47 @@ class Peticion
      * Devuelve el valor del parámetro GET llamado.
      * Si el parámetro GET no existe, se devolverá el segundo parámetro de este método.
      *
-     * @param string $nombre  Nombre del parámetro
-     * @param mixed $por_defecto  El valor del parámetro por defecto
-     * @param string $filtro  Aplica un filtro al valor obtenido
+     * @param string $nombre Nombre del parámetro
+     * @param mixed $porDefecto El valor del parámetro por defecto
+     * @param string $filtro Aplica un filtro al valor obtenido
      * @see obtenerParam
      *
      * @return bool|mixed  El valor del parámetro o falso en caso de fallar el filtro
      */
-    public function obtenerGet($nombre, $por_defecto = null, string $filtro = null)
+    public function obtenerGet($nombre, $porDefecto = null, string $filtro = null)
     {
-        if (isset($this->parametros_get[$nombre])) {
-            if (isset($filtro)) {
-                return $this->filtrarVar($this->parametros_get[$nombre], $filtro);
-            } else {
-                return $this->parametros_get[$nombre];
+        if (isset($this->parametrosGet[$nombre])) {
+            if (isset($filtro) && !$this->filtrarVar($this->parametrosGet[$nombre], $filtro)) {
+                return false;
             }
-        } else {
-            return $por_defecto;
+
+            return $this->parametrosGet[$nombre];
         }
+
+        return $porDefecto;
     }
 
     /**
      * Devuelve el valor del parámetro llamado.
      * Si el parámetro POST no existe, se devolverá el segundo parámetro de este método.
      *
-     * @param string $nombre  Nombre del parámetro
-     * @param mixed $por_defecto  El valor del parámetro por defecto
-     * @param string $filtro  Aplica un filtro al valor obtenido
+     * @param string $nombre Nombre del parámetro
+     * @param mixed $porDefecto El valor del parámetro por defecto
+     * @param string $filtro Aplica un filtro al valor obtenido
      * @see obtenerGet
      *
      * @return mixed  El valor del parámetro o falso en caso de fallar el filtro
      */
-    public function obtenerParam(string $nombre, $por_defecto = null, string $filtro = null)
+    public function obtenerParam(string $nombre, $porDefecto = null, string $filtro = null)
     {
         if (isset($this->parametros[$nombre])) {
-            if (isset($filtro)) {
-                return $this->filtrarVar($this->parametros[$nombre], $filtro);
-            } else {
-                return $this->parametros[$nombre];
+            if (isset($filtro) && !$this->filtrarVar($this->parametros[$nombre], $filtro)) {
+                return false;
             }
-        } else {
-            return $por_defecto;
+
+            return $this->parametros[$nombre];
         }
+
+        return $porDefecto;
     }
 }
