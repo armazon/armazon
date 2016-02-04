@@ -18,7 +18,7 @@
             <directory suffix=".php">./src</directory>
         </whitelist>
     </filter>
-    <php>
-        <env name="AMBIENTE" value="desarrollo"/>
-    </php>
+    <logging>
+        <log type="coverage-clover" target="build/logs/clover.xml"/>
+    </logging>
 </phpunit>
