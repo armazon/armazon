@@ -109,7 +109,7 @@ class Swoole extends Base
 
         // Asignamos los eventos del servidor
         $servidor->on('start', [$this, 'alIniciar']);
-        $servidor->on('shutdown', [$this, 'alDetenerse']);
+        $servidor->on('shutdown', [$this, 'alDetener']);
         $servidor->on('managerStart', [$this, 'alIniciarManager']);
         $servidor->on('workerStart', [$this, 'alIniciarTrabajador']);
         $servidor->on('workerStop', [$this, 'alDetenerTrabajador']);
