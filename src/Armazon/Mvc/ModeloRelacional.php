@@ -108,6 +108,15 @@ abstract class ModeloRelacional extends \stdClass
         }
     }
 
+    private function cumpleRequerimiento($campo): bool
+    {
+        if ($this->campos[$campo]['requerido'] && (!isset($this->{$campo}) || $this->{$campo} === '')) {
+            return false;
+        }
+
+        return true;
+    }
+
     /**
      * Inserta un registro del modelo usando las propiedades modificadas.
      *
@@ -117,34 +126,26 @@ abstract class ModeloRelacional extends \stdClass
     {
         // Preparamos variables a usar
         $parametros = [];
-        $camposFaltantes = [];
         $bd = Aplicacion::instanciar()->obtenerBdRelacional();
+        $llavePrimaria = (array) $this->llavePrimaria;
 
         // Hacemos recorrido de campos
         foreach ($this->campos as $campo => $meta) {
 
             // Verificamos si el campo es llave
-            $es_llave = in_array($campo, $this->llavePrimaria);
+            $esLlave = in_array($campo, $llavePrimaria);
 
             // Validamos si el campo es requerido
-            if (($meta['requerido'] || $es_llave) && (!isset($this->{$campo}) || $this->{$campo} === '')) {
-                if (!($es_llave && $this->llavePrimariaAutonum)) {
-                    $camposFaltantes[] = $campo;
-                    continue;
+            if (!$this->cumpleRequerimiento($campo)) {
+                if (!($esLlave && $this->llavePrimariaAutonum)) {
+                    throw new \RuntimeException("Falta el campo requerido '{$campo}'.");
                 }
             }
 
-            // Agregamos campo a los parametros de inserción
+            // Agregamos campo existente a los parametros de inserción
             if (isset($this->{$campo})) {
                 $parametros[$campo . '|' . $meta['tipo']] = $this->{$campo};
-            } else {
-                $parametros[$campo . '|' . $meta['tipo']] = null;
             }
-        }
-
-        // Validamos presencia de campos requeridos
-        if ($camposFaltantes) {
-            throw new \RuntimeException('Faltan los campos requeridos [' . implode(', ', $camposFaltantes) . ']');
         }
 
         if ($bd->insertar($this->nombreTabla, $parametros)->ejecutar()) {
@@ -168,29 +169,26 @@ abstract class ModeloRelacional extends \stdClass
         // Preparamos variables a usar
         $filtro = [];
         $parametros = [];
-        $camposFaltantes = [];
-        $llavePrimaria = (array)$this->llavePrimaria;
+        $llavePrimaria = (array) $this->llavePrimaria;
 
         // Hacemos recorrido de campos
         foreach ($this->campos as $campo => $meta) {
-            // Verificamos si el campo es llave
-            $es_llave = in_array($campo, $llavePrimaria);
 
-            // Validamos si el campo es requerido
-            if (($meta['requerido'] || $es_llave) && (!isset($this->{$campo}) || $this->{$campo} === '')) {
-                $camposFaltantes[] = $campo;
-                continue;
+            // Verificamos si el campo es llave
+            $esLlave = in_array($campo, $llavePrimaria);
+
+            // Validamos si el campo cumple con su requerimiento
+            if (!$this->cumpleRequerimiento($campo)) {
+                throw new \RuntimeException("Falta el campo requerido '{$campo}'.");
             }
 
             // Agregamos campo a los parametros de inserción
             if (isset($this->{$campo})) {
                 $parametros[$campo . '|' . $meta['tipo']] = $this->{$campo};
-            } else {
-                $parametros[$campo . '|' . $meta['tipo']] = null;
             }
 
             // Agregamos campo a los parametros de filtro
-            if ($es_llave) {
+            if ($esLlave) {
                 $filtro[$campo . '|' . $meta['tipo']] = $this->{$campo};
             }
         }
@@ -198,11 +196,6 @@ abstract class ModeloRelacional extends \stdClass
         // Validamos presencia de campos en filtro
         if (!$filtro) {
             throw new \RuntimeException('Falta rellenar los campos de llave primaria.', 201);
-        }
-
-        // Validamos presencia de campos requeridos
-        if ($camposFaltantes) {
-            throw new \RuntimeException('Faltan los campos requeridos [' . implode(', ', $camposFaltantes) . '].', 202);
         }
 
         return Aplicacion::instanciar()->obtenerBdRelacional()
@@ -220,7 +213,7 @@ abstract class ModeloRelacional extends \stdClass
     {
         // Preparamos variables a usar
         $filtro = [];
-        $llavePrimaria = (array)$this->llavePrimaria;
+        $llavePrimaria = (array) $this->llavePrimaria;
 
         // Hacemos recorrido de campos
         foreach ($this->campos as $campo => $meta) {
