@@ -2,10 +2,12 @@
 
 namespace Armazon\Http;
 
+use Symfony\Component\HttpFoundation\Request;
+
 /**
  * Envoltura de petición http.
  */
-class Peticion
+class Peticion extends Request
 {
     public $metodo = 'GET';
     public $esquema = 'http';

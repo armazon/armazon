@@ -1,11 +1,11 @@
 <?php
 
 namespace Armazon\Http;
-
+use Symfony\Component\HttpFoundation\Response;
 /**
  * Envoltura de respuesta http.
  */
-class Respuesta
+class Respuesta extends Response
 {
     private $tipos_mime = [
         'html' => 'text/html',
