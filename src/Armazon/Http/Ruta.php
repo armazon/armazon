@@ -7,7 +7,7 @@ namespace Armazon\Http;
  */
 class Ruta
 {
-    public $estado_http = 500;
+    public $estadoHttp = 500;
     public $tipo = 'error';
     public $accion;
     public $parametros;
@@ -21,7 +21,7 @@ class Ruta
     {
         $ruta = new self();
         $ruta->tipo = 'estado_http';
-        $ruta->estado_http = $estado;
+        $ruta->estadoHttp = $estado;
 
         return $ruta;
     }

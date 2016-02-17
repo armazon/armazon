@@ -199,12 +199,12 @@ class Enrutador
 
         if (is_int($valor)) {
             $ruta->tipo = 'estado_http';
-            $ruta->estado_http = $valor;
+            $ruta->estadoHttp = $valor;
         }
 
         if (is_int($valor['accion'])) {
             $ruta->tipo = 'estado_http';
-            $ruta->estado_http = $valor['accion'];
+            $ruta->estadoHttp = $valor['accion'];
         }
 
 
@@ -212,7 +212,7 @@ class Enrutador
         if (strpos($valor['accion'], '#') === 0) {
             $ruta->tipo = 'vista';
             $ruta->accion = substr($valor['accion'], 1);
-            $ruta->estado_http = $valor['estado_http'];
+            $ruta->estadoHttp = $valor['estado_http'];
         }
 
         // Verificamos si el valor representa a una redirección
@@ -220,16 +220,16 @@ class Enrutador
             $ruta->tipo = 'redir';
             $ruta->accion = substr($valor['accion'], 1);
             if ($valor['estado_http'] == 303) {
-                $ruta->estado_http = 303;
+                $ruta->estadoHttp = 303;
             } else {
-                $ruta->estado_http = 302;
+                $ruta->estadoHttp = 302;
             }
         }
 
         // Verificamos si el valor representa un llamado a controlador
         if (strpos($valor['accion'], '@') !== false) {
             $ruta->tipo = 'llamado';
-            $ruta->estado_http = $valor['estado_http'];
+            $ruta->estadoHttp = $valor['estado_http'];
             $ruta->accion = $valor['accion'];
 
             if (isset($valor['parametros'])) {
@@ -238,7 +238,7 @@ class Enrutador
         }
 
         if (isset($estado_http)) {
-            $ruta->estado_http = $estado_http;
+            $ruta->estadoHttp = $estado_http;
         }
 
         return $ruta;
@@ -252,8 +252,9 @@ class Enrutador
      *
      * @return Ruta
      */
-    public function buscar(string $metodo, $uri)
+    public function buscar(string $metodo, $uri): Ruta
     {
+//        echo "buscando - {$uri}<br/>";
         // Verificamos si el argumento URI es un estado http
         if (is_int($uri)) {
             // Validamos si el estado http argumentado tiene ruta
@@ -262,7 +263,7 @@ class Enrutador
             }
 
             // Devolvemos ruta predeterminada en caso de no encontrar ruta definida
-            return $this->prepararRuta($uri);
+            return $this->prepararRuta(404);
         }
 
         // Preparamos método

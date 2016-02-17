@@ -34,7 +34,49 @@ class Aplicacion
     private $codificacion;
     public $nombre = 'armazon';
     private $preparada = false;
-
+    private $erroresHttp = [
+        100 => 'Continúa',
+        101 => 'Cambiando protocolo',
+        200 => 'OK',
+        201 => 'Creado',
+        202 => 'Aceptado',
+        203 => 'Información No Oficial',
+        204 => 'Sin Contenido',
+        205 => 'Contenido Para Recargar',
+        206 => 'Contenido Parcial',
+        300 => 'Múltiples Posibilidades',
+        301 => 'Mudado Permanentemente',
+        302 => 'Mudado Temporalmente',
+        303 => 'Vea Otros',
+        304 => 'No Modificado',
+        305 => 'Utilice un Proxy',
+        306 => 'Sin Uso',
+        307 => 'Redirección Temporal',
+        400 => 'Solicitud Incorrecta',
+        401 => 'No Autorizado',
+        402 => 'Pago Requerido',
+        403 => 'Prohibido',
+        404 => 'No Encontrado',
+        405 => 'Método No Permitido',
+        406 => 'No Aceptable',
+        407 => 'Proxy Requerido',
+        408 => 'Tiempo de Espera Agotado',
+        409 => 'Conflicto',
+        410 => 'Ya No Disponible',
+        411 => 'Requiere Longitud',
+        412 => 'Falló Precondición',
+        413 => 'Entidad de Solicitud Demasiado Larga',
+        414 => 'URL de Solicitud Demasiado Largo',
+        415 => 'Tipo de Medio No Soportado',
+        416 => 'Rango Solicitado No Disponible',
+        417 => 'Falló Expectativa',
+        500 => 'Error Interno de Servidor',
+        501 => 'No implementado',
+        502 => 'Pasarela Incorrecta',
+        503 => 'Servicio No Disponible',
+        504 => 'Tiempo de Espera en la Pasarela Agotado',
+        505 => 'Versión de HTTP No Soportada',
+    ];
 
     // METODOS PARA EL MANEJO DE LA INSTANCIA --------------------------------------------------------------------------
 
@@ -83,7 +125,6 @@ class Aplicacion
             return self::$instancia = new self();
         }
     }
-
 
     // METODOS PARA EL MANEJO DE COMPONENTES ---------------------------------------------------------------------------
 
@@ -181,7 +222,6 @@ class Aplicacion
     {
         return $this->obtenerComponente($this->bd_relacional);
     }
-
 
     // METODOS PARA EL MANEJO DE OPCIONES ------------------------------------------------------------------------------
 
@@ -316,7 +356,6 @@ class Aplicacion
         $this->archivo_rutas = realpath($archivo);
     }
 
-
     // METODOS PARA LA EJECUCIÓN DE LA APLICACIÓN ----------------------------------------------------------------------
 
     /**
@@ -353,49 +392,49 @@ class Aplicacion
      *
      * @param Peticion $peticion
      * @param Ruta $ruta
-     * @param int $estado_http
+     * @param int $estadoHttp
      *
      * @return Respuesta
      * @throws \RuntimeException
      */
-    private function despacharRuta(Peticion $peticion, Ruta $ruta, int $estado_http = null): Respuesta
+    private function despacharRuta(Peticion $peticion, Ruta $ruta, int $estadoHttp = null): Respuesta
     {
         // Preparamos respuesta a devolver
         $respuesta = new Respuesta();
 
-        if (isset($estado_http)) {
-            $respuesta->definirEstadoHttp($estado_http);
+        if (isset($estadoHttp)) {
+            $respuesta->definirEstadoHttp($estadoHttp);
         } else {
-            $respuesta->definirEstadoHttp($ruta->estado_http);
-            $estado_http = $ruta->estado_http;
+            $respuesta->definirEstadoHttp($ruta->estadoHttp);
+            $estadoHttp = $ruta->estadoHttp;
         }
 
         // Si la ruta representa una redirección
         if ($ruta->tipo == 'redir') {
-            $respuesta->redirigir($ruta->accion, $ruta->estado_http);
+            $respuesta->redirigir($ruta->accion, $ruta->estadoHttp);
         }
 
         // Si la ruta representa una vista
         if ($ruta->tipo == 'vista') {
             $vista = $this->obtenerComponente('vista');
             $vista->definirPlantilla(null);
-            $vista->estado_http = $estado_http;
+            $vista->estado_http = $estadoHttp;
 
             $respuesta->definirContenido($vista->renderizar($ruta->accion));
         }
 
         // Si la ruta representa un estado http
         if ($ruta->tipo == 'estado_http') {
-            $nueva_ruta = $this->enrutador->buscar('get', $ruta->estado_http);
+            $nueva_ruta = $this->enrutador->buscar('get', $ruta->estadoHttp);
 
-            if ($nueva_ruta->estado_http !== 404) {
-                return $this->despacharRuta($peticion, $nueva_ruta, $ruta->estado_http);
+            if ('estado_http' != $nueva_ruta->tipo && 404 != $nueva_ruta->estadoHttp) {
+                return $this->despacharRuta($peticion, $nueva_ruta, $ruta->estadoHttp);
             }
         }
 
         // Si la ruta representa un llamado de acción a un controlador
         if ($ruta->tipo == 'llamado') {
-            $respuesta->definirEstadoHttp($ruta->estado_http);
+            $respuesta->definirEstadoHttp($ruta->estadoHttp);
 
             // Procesamos la acción de la ruta
             list($controlador_nombre, $accion_nombre) = explode('@', $ruta->accion);
@@ -457,13 +496,29 @@ class Aplicacion
         return $respuesta;
     }
 
-    protected function arrojarError(int $estado_http = 500)
+    /**
+     * Genera una respuesta con el mensaje de error
+     *
+     * @param Peticion $peticion
+     * @param int $estadoHttp
+     *
+     * @return Respuesta
+     */
+    public function generarRespuestaError(Peticion $peticion, int $estadoHttp = 500): Respuesta
     {
+        // Preparamos respuesta a arrojar
         $respuesta = new Respuesta();
-        $respuesta->definirEstadoHttp($estado_http);
+        if (isset($this->erroresHttp[$estadoHttp])) {
+            $respuesta->definirContenido('<h1>' . $this->erroresHttp[$estadoHttp] . '</h1>');
+        }
+        $respuesta->definirEstadoHttp($estadoHttp);
 
-        if ($estado_http == 500) {
-            $respuesta->definirContenido('Hubo un error interno de servidor.');
+        // Buscamos estado en las rutas
+        $ruta = $this->enrutador->buscar($peticion->metodo, $estadoHttp);
+
+        // Cambiamos la respuesta despachando ruta en caso de ser encontrada
+        if ('estado_http' != $ruta->tipo && 404 != $ruta->estadoHttp) {
+            $respuesta = $this->despacharRuta($peticion, $ruta, $estadoHttp);
         }
 
         return $respuesta;
@@ -478,15 +533,20 @@ class Aplicacion
      */
     public function procesarPetición(Peticion $peticion): Respuesta
     {
-        // Preparamos la aplicación en caso necesario
-        if (!$this->preparada) {
-            return $this->arrojarError();
+        try {
+            // Verificamos si la aplicación está preparada
+            if (!$this->preparada) {
+                return $this->generarRespuestaError($peticion, 503);
+            }
+
+            // Buscamos la ruta a despachar a traves de la peticion
+            $ruta = $this->enrutador->buscar($peticion->metodo, $peticion->uri);
+
+            // Despachamos ruta encontrada
+            return $this->despacharRuta($peticion, $ruta);
+
+        } catch (\Throwable $e) {
+            return $this->generarRespuestaError($peticion, 500);
         }
-
-        // Buscamos la ruta a despachar a traves de la peticion
-        $ruta = $this->enrutador->buscar($peticion->metodo, $peticion->uri);
-
-        // Despachamos ruta encontrada
-        return $this->despacharRuta($peticion, $ruta);
     }
 }
