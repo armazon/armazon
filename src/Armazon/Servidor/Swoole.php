@@ -134,6 +134,10 @@ class Swoole extends Base
         $config['group'] = $this->grupo;
         $config['task_worker_max'] = $numCpu;
 
+        if (isset($this->archivoRegistros)) {
+            $config['log_file'] = $this->archivoRegistros;
+        }
+
         // Pasamos configuraciones a servidor
         $servidor->set($config);
 
