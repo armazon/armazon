@@ -13,7 +13,7 @@ class Vista extends \stdClass
     private $app;
 
     private $procesadores = [];
-    protected $dir_vistas;
+    protected $dirVistas;
     protected $contenido;
     protected $plantilla;
     protected $renderizado = false;
@@ -24,7 +24,7 @@ class Vista extends \stdClass
         $this->app = $app;
 
         // Definimos el directorio de las vistas
-        $this->dir_vistas = $app->obtenerDirApp() . DIRECTORY_SEPARATOR . 'vistas';
+        $this->dirVistas = $app->obtenerDirApp() . DIRECTORY_SEPARATOR . 'vistas';
 
         // Registramos procesador para usar variables asignadas
         $this->procesadores['v'] = function ($texto) {
@@ -69,7 +69,7 @@ class Vista extends \stdClass
         if ($temp === false) {
             throw new \InvalidArgumentException('El directorio solicitado para las vistas no existe.');
         } else {
-            $this->dir_vistas = $temp;
+            $this->dirVistas = $temp;
         }
     }
 
@@ -93,7 +93,7 @@ class Vista extends \stdClass
     private function cargarContenido(string $vista)
     {
         // Preparamos ubicación del archivo de la vista
-        $vista = $this->dir_vistas . DIRECTORY_SEPARATOR . $vista . '.phtml';
+        $vista = $this->dirVistas . DIRECTORY_SEPARATOR . $vista . '.phtml';
 
         // Validamos si existe el archivo
         if (!file_exists($vista)) {
