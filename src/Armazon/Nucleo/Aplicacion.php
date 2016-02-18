@@ -427,7 +427,7 @@ class Aplicacion
         if ($ruta->tipo == 'estado_http') {
             $nueva_ruta = $this->enrutador->buscar('get', $ruta->estadoHttp);
 
-            if ('estado_http' != $nueva_ruta->tipo && 404 != $nueva_ruta->estadoHttp) {
+            if ('estado_http' != $nueva_ruta->tipo) {
                 return $this->despacharRuta($peticion, $nueva_ruta, $ruta->estadoHttp);
             }
         }
