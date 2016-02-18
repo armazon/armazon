@@ -1,6 +1,6 @@
 {
   "name": "armazon/armazon",
-  "description": "Armazón de Trabajo y Servidor de Aplicación de Alto Rendimiento",
+  "description": "Marco de Trabajo y Servidor de Aplicación de Alto Rendimiento",
   "keywords": ["framework", "swoole", "appserver", "server", "async", "non-blocking", "concurrent"],
   "homepage": "https://armazonphp.com",
   "license": "MIT",
@@ -15,7 +15,8 @@
   "minimum-stability": "stable",
   "require": {
     "php": ">=7.0.0",
-    "ext-swoole": "~1.8.0"
+    "ext-swoole": "~1.8.0",
+    "filp/whoops": "^2.0"
   },
   "require-dev": {
     "phpunit/phpunit": "5.1.*",

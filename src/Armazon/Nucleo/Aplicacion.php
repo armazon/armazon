@@ -9,6 +9,8 @@ use Armazon\Http\Enrutador;
 use Armazon\Http\Peticion;
 use Armazon\Http\Respuesta;
 use Armazon\Http\Ruta;
+use Whoops\Handler\PrettyPageHandler;
+use Whoops\Run;
 
 /**
  * Aplicación Web
@@ -17,13 +19,14 @@ class Aplicacion
 {
     /** @var self */
     protected static $instancia;
-
-    protected $componentes = [];
-
     /** @var Peticion */
     protected $peticion;
     /** @var Enrutador */
     protected $enrutador;
+    /** @var Run */
+    private $whoops;
+
+    protected $componentes = [];
     protected $bd_relacional = 'bd';
     private $ambiente = 'desarrollo';
     private $archivo_rutas;
@@ -45,8 +48,8 @@ class Aplicacion
         205 => 'Contenido Para Recargar',
         206 => 'Contenido Parcial',
         300 => 'Múltiples Posibilidades',
-        301 => 'Mudado Permanentemente',
-        302 => 'Mudado Temporalmente',
+        301 => 'Movido Permanentemente',
+        302 => 'Movido Temporalmente',
         303 => 'Vea Otros',
         304 => 'No Modificado',
         305 => 'Utilice un Proxy',
@@ -382,6 +385,12 @@ class Aplicacion
             $this->enrutador->definirUriBase($this->uri_base);
             $this->enrutador->importarRutas(require $this->archivo_rutas);
 
+            // Preparamos gestor de errores para ambiente desarrollo
+            $this->whoops = new Run();
+            $this->whoops->pushHandler(new PrettyPageHandler());
+            $this->whoops->writeToOutput(false);
+            $this->whoops->allowQuit(false);
+
             // Establecemos que la aplicación ya está preparada
             $this->preparada = true;
         }
@@ -514,10 +523,9 @@ class Aplicacion
         }
         $respuesta->definirEstadoHttp($estadoHttp);
 
+        // Mostramos el detalle del error si el ambiente es desarrollo
         if ('desarrollo' == $this->ambiente) {
-            $temp = '<pre>';
-            $temp .= var_export($error, true);
-            $temp .= '</pre>';
+            $temp = $this->whoops->handleException($error);
             $respuesta->definirContenido($temp);
             return $respuesta;
         }
