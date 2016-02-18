@@ -9,6 +9,7 @@ use Armazon\Http\Enrutador;
 use Armazon\Http\Peticion;
 use Armazon\Http\Respuesta;
 use Armazon\Http\Ruta;
+use Symfony\Component\Yaml\Exception\RuntimeException;
 use Whoops\Handler\PrettyPageHandler;
 use Whoops\Run;
 
@@ -24,20 +25,20 @@ class Aplicacion
     /** @var Enrutador */
     protected $enrutador;
     /** @var Run */
-    private $whoops;
+    protected $whoops;
 
-    protected $componentes = [];
-    protected $bd_relacional = 'bd';
-    private $ambiente = 'desarrollo';
-    private $archivo_rutas;
-    private $uri_base = '/';
-    private $dir_app;
-    private $dir_autocargado = [];
-    private $zona_tiempo;
-    private $codificacion;
     public $nombre = 'armazon';
-    private $preparada = false;
-    private $erroresHttp = [
+    protected $componentes = [];
+    protected $bdRelacional = 'bd';
+    protected $ambiente = 'desarrollo';
+    protected $archivoRutas;
+    protected $uriBase = '/';
+    protected $dirApp;
+    protected $dirAutoCargado = [];
+    protected $zonaTiempo;
+    protected $codificacion;
+    protected $preparada = false;
+    protected $erroresHttp = [
         100 => 'Continúa',
         101 => 'Cambiando protocolo',
         200 => 'OK',
@@ -100,7 +101,7 @@ class Aplicacion
         // Quitamos la base de la clase
         $clase = ltrim($clase, '\\');
 
-        foreach ($this->dir_autocargado as $dir) {
+        foreach ($this->dirAutoCargado as $dir) {
             // Preparamos nombre del archivo que puede contener la clase
             $archivo = $dir . DIRECTORY_SEPARATOR . str_replace('\\', DIRECTORY_SEPARATOR, $clase) . '.php';
 
@@ -213,7 +214,7 @@ class Aplicacion
      */
     public function vincularBdRelacional(string $nombre)
     {
-        $this->bd_relacional = $nombre;
+        $this->bdRelacional = $nombre;
     }
 
     /**
@@ -223,7 +224,7 @@ class Aplicacion
      */
     public function obtenerBdRelacional(): Relacional
     {
-        return $this->obtenerComponente($this->bd_relacional);
+        return $this->obtenerComponente($this->bdRelacional);
     }
 
     // METODOS PARA EL MANEJO DE OPCIONES ------------------------------------------------------------------------------
@@ -239,7 +240,7 @@ class Aplicacion
             throw new \InvalidArgumentException('La zona de tiempo introducida es inválida.');
         }
 
-        $this->zona_tiempo = $zona_tiempo;
+        $this->zonaTiempo = $zona_tiempo;
     }
 
     /**
@@ -297,7 +298,7 @@ class Aplicacion
             $uri = substr($uri, 0, -1);
         }
 
-        $this->uri_base = $uri;
+        $this->uriBase = $uri;
     }
 
     /**
@@ -307,10 +308,10 @@ class Aplicacion
      */
     public function definirDirApp(string $directorio)
     {
-        $this->dir_app = realpath($directorio);
+        $this->dirApp = realpath($directorio);
 
-        $this->dir_autocargado[] = $this->dir_app . DIRECTORY_SEPARATOR . 'controladores';
-        $this->dir_autocargado[] = $this->dir_app . DIRECTORY_SEPARATOR . 'modelos';
+        $this->dirAutoCargado[] = $this->dirApp . DIRECTORY_SEPARATOR . 'controladores';
+        $this->dirAutoCargado[] = $this->dirApp . DIRECTORY_SEPARATOR . 'modelos';
     }
 
     /**
@@ -320,7 +321,7 @@ class Aplicacion
      */
     public function obtenerDirApp(): string
     {
-        return $this->dir_app;
+        return $this->dirApp;
     }
 
     /**
@@ -351,12 +352,12 @@ class Aplicacion
      */
     public function registrarDirAutoCargado(string $directorio)
     {
-        $this->dir_autocargado[] = realpath($directorio);
+        $this->dirAutoCargado[] = realpath($directorio);
     }
 
     public function definirArchivoRutas($archivo)
     {
-        $this->archivo_rutas = realpath($archivo);
+        $this->archivoRutas = realpath($archivo);
     }
 
     // METODOS PARA LA EJECUCIÓN DE LA APLICACIÓN ----------------------------------------------------------------------
@@ -368,28 +369,38 @@ class Aplicacion
     {
         if (!$this->preparada) {
             // Validamos requisitos míminos
-            if (!isset($this->dir_app)) {
+            if (!isset($this->dirApp)) {
                 throw new \RuntimeException('Todavía no define directorio base de la aplicacion.');
             }
 
             // Validamos presencia de rutas
-            if (!isset($this->archivo_rutas)) {
-                $this->archivo_rutas = $this->dir_app . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'rutas.php';
+            if (!isset($this->archivoRutas)) {
+                $this->archivoRutas = $this->dirApp . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'rutas.php';
             }
-            if (!is_file($this->archivo_rutas)) {
+            if (!is_file($this->archivoRutas)) {
                 throw new \RuntimeException('No fue encontrado el archivo de rutas.');
             }
 
             // Preparamos enrutador
             $this->enrutador = new Enrutador();
-            $this->enrutador->definirUriBase($this->uri_base);
-            $this->enrutador->importarRutas(require $this->archivo_rutas);
+            $this->enrutador->definirUriBase($this->uriBase);
+            $this->enrutador->importarRutas(require $this->archivoRutas);
 
-            // Preparamos gestor de errores para ambiente desarrollo
+            // Preparamos gestores de errores
             $this->whoops = new Run();
             $this->whoops->pushHandler(new PrettyPageHandler());
             $this->whoops->writeToOutput(false);
             $this->whoops->allowQuit(false);
+
+            set_error_handler(function($nivel, $mensaje, $archivo, $lineaArchivo){
+                throw new \ErrorException($mensaje, 0, $nivel, $archivo, $lineaArchivo);
+            });
+            register_shutdown_function(function(){
+                $error = error_get_last();
+                if (is_array($error)) {
+                    throw new \ErrorException($error['message'], 0, $error['type'], $error['file'], $error['line']);
+                }
+            });
 
             // Establecemos que la aplicación ya está preparada
             $this->preparada = true;
@@ -397,7 +408,46 @@ class Aplicacion
     }
 
     /**
-     * Despacha una ruta y devuelve una respuesta.
+     * Devuelve la instancia del controlador usando su nombre.
+     *
+     * @param string $nombre
+     * @param Peticion $peticion
+     * @param Respuesta $respuesta
+     *
+     * @return Controlador
+     * @throws \RuntimeException
+     */
+    private function obtenerControlador(string $nombre, Peticion $peticion, Respuesta $respuesta): Controlador
+    {
+        // Preparamos nombre de clase del controlador
+        $clase = $nombre . 'Controlador';
+
+        // Verificamos si la clase del controlador existe si no la cargamos manualmente
+        if (!class_exists($clase)) {
+            // Preparamos camino del archivo del controlador
+            $archivo = $this->dirApp . DIRECTORY_SEPARATOR . 'controladores' . DIRECTORY_SEPARATOR
+                . str_replace('\\', DIRECTORY_SEPARATOR, $nombre) . '.php';
+
+            // Validamos presencia del archivo del controlador
+            if (!is_file($archivo)) {
+                throw new \RuntimeException("El archivo del controlador '{$nombre}' no existe.");
+            }
+
+            // Incluimos el archivo del controlador
+            require_once $archivo;
+
+            // Verificamos si la clase del controlador pudo incluirse despues de la carga manual
+            if (!class_exists($clase)) {
+                throw new \RuntimeException("La clase del controlador '{$nombre}' no existe.");
+            }
+        }
+
+        // Devolvemos controlador
+        return new $clase($this, $peticion, $respuesta);
+    }
+
+    /**
+     * Despacha una ruta y devuelve su respuesta.
      *
      * @param Peticion $peticion
      * @param Ruta $ruta
@@ -446,35 +496,21 @@ class Aplicacion
             $respuesta->definirEstadoHttp($ruta->estadoHttp);
 
             // Procesamos la acción de la ruta
-            list($controlador_nombre, $accion_nombre) = explode('@', $ruta->accion);
+            list($controladorNombre, $accionNombre) = explode('@', $ruta->accion);
 
-            // Preparamos posición del archivo del controlador
-            $archivo = $this->dir_app . DIRECTORY_SEPARATOR . 'controladores' . DIRECTORY_SEPARATOR
-                . str_replace('\\', DIRECTORY_SEPARATOR, $controlador_nombre) . '.php';
-
-            // Validamos presencia del archivo del controlador
-            if (!is_file($archivo)) {
-                throw new \RuntimeException("El controlador '{$controlador_nombre}' no existe.");
-            }
-
-            // Incluimos el archivo del controlador
-            require_once $archivo;
-
-            // Instanciamos el controlador
-            $controlador_clase = $controlador_nombre . 'Controlador';
-            $controlador = new $controlador_clase($this, $peticion, $respuesta);
+            // Obtenemos el controlador
+            $controlador = $this->obtenerControlador($controladorNombre, $peticion, $respuesta);
 
             // Traspasamos parametros de la ruta al controlador
-            if (isset($ruta->parametros)) {
+            if (isset($ruta->parametros) && count($ruta->parametros)) {
                 $controlador->parametros = $ruta->parametros;
             }
 
             // Registramos componente vista al controlador
-            $vista = $this->obtenerComponente('vista', true);
-            $controlador->registrarVista($vista);
+            $controlador->vista = $this->obtenerComponente('vista', true);
 
             // Ejecutamos evento de inicio en el controlador
-            if ($temp = $controlador->alIniciar($controlador_nombre, $accion_nombre)) {
+            if ($temp = $controlador->alIniciar($controladorNombre, $accionNombre)) {
                 if ($temp instanceof Respuesta) {
                     return $temp;
                 } elseif ($temp instanceof Ruta) {
@@ -484,20 +520,22 @@ class Aplicacion
             unset($temp);
 
             // Validamos presencia de accion
-            if (!method_exists($controlador, $accion_nombre)) {
-                throw new \RuntimeException("La acción '{$accion_nombre}' no existe dentro del controlador.");
+            if (!method_exists($controlador, $accionNombre)) {
+                throw new \RuntimeException("La acción '{$accionNombre}' no existe dentro del controlador.");
             }
 
             // Ejecutamos accion
-            $temp = $controlador->{$accion_nombre}();
+            $resultado = $controlador->{$accionNombre}();
 
-            // Ejecutamos evento de terminacion en el controlador
-            $temp = $controlador->alTerminar($temp);
-
-            if ($temp instanceof Respuesta) {
-                return $temp;
-            } elseif ($temp instanceof Ruta) {
-                return $this->despacharRuta($peticion, $temp);
+            // Convertimos resultado en respuesta y devolvemos
+            if (empty($resultado) && $controlador->vista->fueRenderizado()) {
+                $contenido = $controlador->vista->obtenerContenido();
+                $respuesta->definirContenido($contenido);
+                return $respuesta;
+            } elseif ($resultado instanceof Respuesta) {
+                return $resultado;
+            } elseif ($resultado instanceof Ruta) {
+                return $this->despacharRuta($peticion, $resultado);
             }
         }
 
@@ -525,8 +563,14 @@ class Aplicacion
 
         // Mostramos el detalle del error si el ambiente es desarrollo
         if ('desarrollo' == $this->ambiente) {
-            $temp = $this->whoops->handleException($error);
-            $respuesta->definirContenido($temp);
+            $whoops = new Run();
+            $whoops_pph = new PrettyPageHandler();
+            $whoops_pph->addDataTable('Petición:', (array) $peticion);
+            $whoops->pushHandler($whoops_pph);
+            $whoops->writeToOutput(false);
+            $whoops->allowQuit(false);
+
+            $respuesta->definirContenido($whoops->handleException($error));
             return $respuesta;
         }
 

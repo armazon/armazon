@@ -14,27 +14,19 @@ abstract class Controlador
 {
     /** @var Aplicacion */
     protected $app;
-
     /** @var Peticion */
     protected $peticion;
     /** @var Respuesta  */
     protected $respuesta;
-    /** @var Vista  */
-    protected $vista;
-    protected $parametros;
-    protected $controlador;
-    protected $accion;
+    /** @var Vista */
+    public $vista;
+    public $parametros;
 
     public function __construct(Aplicacion $app, Peticion $peticion, Respuesta $respuesta)
     {
         $this->app = $app;
         $this->peticion = $peticion;
         $this->respuesta = $respuesta;
-    }
-
-    public function registrarVista(Vista &$vista)
-    {
-        $this->vista = $vista;
     }
 
     /**
@@ -46,25 +38,5 @@ abstract class Controlador
      * @return Ruta|Respuesta
      */
     public function alIniciar(string $controlador, string $accion)
-    {
-    }
-
-    /**
-     * Evento que corre despues de ejecutar la acción solicitada.
-     *
-     * @param mixed $resultado Resultado de ejecución de la acción solicitada
-     *
-     * @return Respuesta
-     */
-    public function alTerminar(&$resultado)
-    {
-        // TODO: Revisar bien el evento alTerminar del Controlador, debería recibir y retornar rutas o respuestas o algo así.
-        if (empty($resultado) && $this->vista->fueRenderizado()) {
-            $contenido = $this->vista->obtenerContenido();
-            $this->respuesta->definirContenido($contenido);
-            return $this->respuesta;
-        }
-
-        return $resultado;
-    }
+    {}
 }
