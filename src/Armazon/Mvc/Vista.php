@@ -26,20 +26,6 @@ class Vista extends \stdClass
         // Definimos el directorio de las vistas
         $this->dirVistas = $app->obtenerDirApp() . DIRECTORY_SEPARATOR . 'vistas';
 
-        // Registramos procesador para usar variables asignadas
-        $this->filtros['v'] = function ($texto) {
-            if (isset($this->{$texto})) {
-                $texto = $this->{$texto};
-            }
-
-            return $texto;
-        };
-
-        // Registramos procesador para escapar los textos
-        $this->filtros['e'] = function ($texto) {
-            return htmlspecialchars($texto, ENT_COMPAT | ENT_DISALLOWED | ENT_HTML5);
-        };
-
         // Registramos procesador para convertir texto a titulo
         $this->filtros['t'] = function ($texto) {
             $texto = mb_convert_case($texto, MB_CASE_TITLE);
