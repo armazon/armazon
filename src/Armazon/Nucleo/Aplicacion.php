@@ -501,10 +501,11 @@ class Aplicacion
      *
      * @param Peticion $peticion
      * @param int $estadoHttp
+     * @param \Throwable $error
      *
      * @return Respuesta
      */
-    public function generarRespuestaError(Peticion $peticion, int $estadoHttp = 500): Respuesta
+    public function generarRespuestaError(Peticion $peticion, int $estadoHttp = 500, \Throwable $error = null): Respuesta
     {
         // Preparamos respuesta a arrojar
         $respuesta = new Respuesta();
@@ -512,6 +513,14 @@ class Aplicacion
             $respuesta->definirContenido('<h1>' . $this->erroresHttp[$estadoHttp] . '</h1>');
         }
         $respuesta->definirEstadoHttp($estadoHttp);
+
+        if ('desarrollo' == $this->ambiente) {
+            $temp = '<pre>';
+            $temp .= var_export($error, true);
+            $temp .= '</pre>';
+            $respuesta->definirContenido($temp);
+            return $respuesta;
+        }
 
         // Buscamos estado en las rutas
         $ruta = $this->enrutador->buscar($peticion->metodo, $estadoHttp);
@@ -546,7 +555,7 @@ class Aplicacion
             return $this->despacharRuta($peticion, $ruta);
 
         } catch (\Throwable $e) {
-            return $this->generarRespuestaError($peticion, 500);
+            return $this->generarRespuestaError($peticion, 500, $e);
         }
     }
 }
