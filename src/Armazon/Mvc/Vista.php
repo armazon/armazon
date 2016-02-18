@@ -12,7 +12,7 @@ class Vista extends \stdClass
     /** @var Aplicacion */
     private $app;
 
-    private $procesadores = [];
+    protected $filtros = [];
     protected $dirVistas;
     protected $contenido;
     protected $plantilla;
@@ -27,7 +27,7 @@ class Vista extends \stdClass
         $this->dirVistas = $app->obtenerDirApp() . DIRECTORY_SEPARATOR . 'vistas';
 
         // Registramos procesador para usar variables asignadas
-        $this->procesadores['v'] = function ($texto) {
+        $this->filtros['v'] = function ($texto) {
             if (isset($this->{$texto})) {
                 $texto = $this->{$texto};
             }
@@ -36,28 +36,29 @@ class Vista extends \stdClass
         };
 
         // Registramos procesador para escapar los textos
-        $this->procesadores['e'] = function ($texto) {
+        $this->filtros['e'] = function ($texto) {
             return htmlspecialchars($texto, ENT_COMPAT | ENT_DISALLOWED | ENT_HTML5);
         };
 
         // Registramos procesador para convertir texto a titulo
-        $this->procesadores['t'] = function ($texto) {
+        $this->filtros['t'] = function ($texto) {
             $texto = mb_convert_case($texto, MB_CASE_TITLE);
             $palabras_omitidas = array(
                 ' de ', ' un ', ' una ', ' uno ', ' el ', ' la ', ' lo ', ' las ', ' los ', ' de ', ' y ',
                 ' o ', ' ni ', ' pero ', ' es ', ' e ', ' si ', ' entonces ', ' sino ', ' cuando ', ' al ',
-                ' desde ', ' por ', ' para ', ' en ', ' off ', ' dentro ', ' afuera ', ' sobre ', ' a ',
-                ' adentro ', ' con ', ' su ');
+                ' desde ', ' por ', ' para ', ' en ', ' dentro ', ' afuera ', ' sobre ', ' a ',
+                ' adentro ', ' con ', ' su ', ' of ', ' a ', ' an ', ' the ', ' and ', ' or ', ' but ', ' is ',
+                ' if ', ' then ', ' when ', ' until ', ' by ', ' for ', ' in ', ' off ', ' with ');
             return trim(str_ireplace($palabras_omitidas, $palabras_omitidas, $texto . ' '));
         };
 
         // Registramos procesador para convertir texto a mayúsculas
-        $this->procesadores['u'] = function ($texto) {
+        $this->filtros['u'] = function ($texto) {
             return mb_convert_case($texto, MB_CASE_UPPER);
         };
 
         // Registramos procesador para convertir texto a minúsculas
-        $this->procesadores['l'] = function ($texto) {
+        $this->filtros['l'] = function ($texto) {
             return mb_convert_case($texto, MB_CASE_LOWER);
         };
     }
@@ -117,28 +118,28 @@ class Vista extends \stdClass
     }
 
     /**
-     * Registra un procesador de textos en la vista.
+     * Registra un filtro de textos en la vista.
      *
-     * @param string $id Identificador del procesador
-     * @param callable $fn Función que procesará el valor
+     * @param string $id Identificador del filtro
+     * @param callable $fn Función que filtrará el valor
      */
-    public function registrarProcesador(string $id, callable $fn)
+    public function registrarFiltro(string $id, callable $fn)
     {
-        $this->procesadores[$id] = $fn;
+        $this->filtros[$id] = $fn;
     }
 
     /**
-     * Aplica el procesador solicitado al texto.
+     * Aplica el filtro solicitado al texto.
      *
-     * @param string $procesador
+     * @param string $filtro
      * @param string $texto
      *
      * @return string
      */
-    private function procesarValor(string $procesador, string $texto): string
+    private function filtrarValor(string $filtro, string $texto): string
     {
-        if (isset($this->procesadores[$procesador])) {
-            $texto = $this->procesadores[$procesador]($texto);
+        if (isset($this->filtros[$filtro])) {
+            $texto = $this->filtros[$filtro]($texto);
         }
 
         return $texto;
@@ -159,27 +160,34 @@ class Vista extends \stdClass
             $this->contenido = $this->cargarContenido('plantillas/' . $this->plantilla);
         }
 
+        // Procesamos los textos dinámicos en caso de ser detectados
         if (strpos($this->contenido, '{{') !== false) {
 
             preg_match_all('#\{\{([^\{\}]+)\}\}#u', $this->contenido, $ocurrencias);
 
             foreach ($ocurrencias[1] as $ocurrencia) {
-                // Extraemos los procesadores encontrados en la ocurrencia
-                $procesadores = explode('|', $ocurrencia);
+                // Extraemos los filtros encontrados en la ocurrencia
+                $filtros = explode('|', $ocurrencia);
 
-                // Extraemos el valor de los procesadores
-                $valor = array_pop($procesadores);
+                // Extraemos el valor de los filtros
+                $texto = array_shift($filtros);
 
-                // Aplicamos procesadores al valor en caso necesario
-                if (!empty($procesadores)) {
-                    foreach ($procesadores as $procesador) {
-                        $valor = $this->procesarValor($procesador, $valor);
-                    }
-                } else {
-                    $valor = $this->procesarValor('v', $valor);
+                // Sustituimos si existe una variable en la vista con el nombre del texto
+                if (isset($this->{$texto})) {
+                    $texto = $this->{$texto};
                 }
 
-                $this->contenido = str_replace('{{' . $ocurrencia . '}}', $valor, $this->contenido);
+                // Aplicamos filtros al valor en caso necesario
+                if (count($filtros)) {
+                    foreach ($filtros as $filtro) {
+                        $texto = $this->filtrarValor($filtro, $texto);
+                    }
+                }
+
+                // Escapamos el texto por cuestiones de seguridad
+                $texto = htmlspecialchars($texto, ENT_COMPAT | ENT_DISALLOWED | ENT_HTML5);
+
+                $this->contenido = str_replace('{{' . $ocurrencia . '}}', $texto, $this->contenido);
             }
         }
 
