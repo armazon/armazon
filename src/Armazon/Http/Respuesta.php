@@ -7,7 +7,7 @@ namespace Armazon\Http;
  */
 class Respuesta
 {
-    private $tipos_mime = [
+    private $mime = [
         'html' => 'text/html',
         'js' => 'application/x-javascript',
         'json' => 'application/json',
@@ -26,7 +26,8 @@ class Respuesta
         'pdf' => 'application/pdf',
     ];
     protected $cabeceras = [
-        'X-Powered-By' => 'Armazon'
+        'X-Powered-By' => 'Armazon',
+        'Content-Type' => 'text/html',
     ];
     protected $codificacion = 'utf-8';
     protected $estadoHttp = 200;
@@ -75,8 +76,16 @@ class Respuesta
         return $this->estadoHttp;
     }
 
-    public function definirContenido(string $contenido) {
-        $this->contenido = $contenido;
+    public function definirContenido($contenido) {
+        if ('json' == $this->tipoContenido && !is_string($contenido)) {
+            $this->contenido = json_encode($contenido);
+        } elseif ('xml' == $this->tipoContenido && $contenido instanceof \SimpleXMLElement) {
+            $this->contenido = $contenido->asXML();
+        } elseif ('xml' == $this->tipoContenido && $contenido instanceof \DOMDocument) {
+            $this->contenido = $contenido->saveXML();
+        } else {
+            $this->contenido = $contenido;
+        }
     }
 
     public function obtenerContenido(): string {
@@ -86,6 +95,11 @@ class Respuesta
     public function definirTipoContenido($tipo)
     {
         $this->tipoContenido = $tipo;
+        if (isset($this->mime[$tipo])) {
+            $this->cabeceras['Content-Type'] = $this->mime[$tipo];
+        } else {
+            $this->cabeceras['Content-Type'] = $tipo;
+        }
     }
 
     public function obtenerTipoContenido(): string
@@ -109,8 +123,6 @@ class Respuesta
         foreach ($this->cabeceras as $cabecera => $valor) {
             header($cabecera . ': ' . $valor);
         }
-
-        header('Content-Type: ' . $this->tipos_mime[$this->tipoContenido] . '; charset=' . $this->codificacion);
 
         if (!empty($this->contenido)) {
             echo $this->contenido;
