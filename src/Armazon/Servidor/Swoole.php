@@ -90,6 +90,7 @@ class Swoole extends Base
                 $res->header($nombre, $valor);
             }
             $res->header('Content-Length', strlen($contenido));
+            $res->header('Server', 'Armazon HTTP Server');
 
             // TODO: Implementar la devolución de las galletas
 
