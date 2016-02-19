@@ -11,7 +11,6 @@ class Peticion
     public $esquema = 'http';
     public $host;
     public $puerto = '80';
-    public $base;
     public $uri;
     public $camino;
     public $fragmento;
@@ -235,7 +234,9 @@ class Peticion
         }
         $url .= '://' . $req->header['host'];
         $url .= $req->server['request_uri'];
-        $url .= '?' . $req->server['query_string'];
+        if (isset($req->server['query_string'])) {
+            $url .= '?' . $req->server['query_string'];
+        }
 
         // Preparamos parámetros según método
         $parametros = [];
@@ -247,7 +248,20 @@ class Peticion
         }
 
         // Preparamos cabeceras
-        $cabeceras = $req->header;
+        $cabeceras = [];
+        foreach($req->header as $nombre => $valor) {
+            $nombre = str_replace(' ', '-', ucwords(str_replace('-', ' ', $nombre)));
+            if (isset($cabeceras[$nombre])) {
+                if (is_array($cabeceras[$nombre])) {
+                    $cabeceras[$nombre][] = $valor;
+                } else {
+                    $cabeceras[$nombre] = [$cabeceras[$nombre], $valor];
+                }
+            } else {
+                $cabeceras[$nombre] = $valor;
+            }
+        }
+
 
         // Preparamos galletas
         $galletas = [];
