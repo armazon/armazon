@@ -65,41 +65,43 @@ class Swoole extends Base
     }
 
     public function alDetenerTrabajador()
-    {
-    }
+    {}
 
     public function alAsignarTarea($servidor, $idTarea, $deId, $datos)
-    {
-    }
+    {}
 
     public function alTerminarTarea($servidor, $idTarea, $datos)
-    {
-    }
+    {}
 
     public function alRecibirPeticion(\swoole_http_request $req, \swoole_http_response $res)
     {
-        // Instanciamos la petición
-        $peticion = Peticion::crearDesdeSwoole($req);
+        try {
+            // Instanciamos la petición
+            $peticion = Peticion::crearDesdeSwoole($req);
 
-        // Obtenemos la respuesta procesando la petición
-        $respuesta = $this->app->procesarPetición($peticion);
+            // Obtenemos la respuesta procesando la petición
+            $respuesta = $this->app->procesarPetición($peticion);
 
-        // Obtenemos contenido
-        $contenido = $respuesta->obtenerContenido();
+            // Obtenemos contenido
+            $contenido = $respuesta->obtenerContenido();
 
-        foreach ($respuesta->obtenerCabeceras() as $nombre => $valor) {
-            $nombre = str_replace(' ', '-', ucwords(str_replace('-', ' ', $nombre)));
-            $res->header($nombre, $valor);
+            foreach ($respuesta->obtenerCabeceras() as $nombre => $valor) {
+                $nombre = str_replace(' ', '-', ucwords(str_replace('-', ' ', $nombre)));
+                $res->header($nombre, $valor);
+            }
+            $res->header('Content-Length', strlen($contenido));
+
+            // TODO: Implementar la devolución de las galletas
+
+            // Definimos estado http
+            $res->status($respuesta->obtenerEstadoHttp());
+
+            // Enviamos la respuesta al navegador
+            $res->end($contenido);
+        } catch (\Throwable $e) {
+            $res->status(500);
+            $res->end('<pre>'. var_export($e, true) .'</pre>');
         }
-        $res->header('Content-Length', strlen($contenido));
-
-        // TODO: Implementar la devolución de las galletas
-
-        // Definimos estado http
-        $res->status($respuesta->obtenerEstadoHttp());
-
-        // Enviamos la respuesta al navegador
-        $res->end($contenido);
     }
 
     public function iniciar()
