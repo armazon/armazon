@@ -27,7 +27,7 @@ class Aplicacion
     /** @var Run */
     protected $whoops;
 
-    public $nombre = 'armazon';
+    public $id = 'armazon';
     protected $componentes = [];
     protected $bdRelacional = 'bd';
     protected $ambiente = 'desarrollo';
@@ -342,7 +342,7 @@ class Aplicacion
      */
     public function definirNombre(string $nombre)
     {
-        $this->nombre = $nombre;
+        $this->id = $nombre;
     }
 
     /**
