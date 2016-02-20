@@ -145,6 +145,6 @@ class Swoole extends Base
         $servidor->set($config);
 
         // Iniciamos el servidor
-        $servidor->start();
+        return $servidor->start();
     }
 }
