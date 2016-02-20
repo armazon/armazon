@@ -17,10 +17,14 @@ Este proyecto fue desarrollado orgullosamente en **español**.
 Para iniciar una aplicación web con ARMAZÓN solo debes ejecutar el siguiente comando en la consola:
 
 ```shell
-composer create-project armazon/proyecto-base tu-app
+composer create-project armazon/proyecto-base dir-ejemplo
+cd dir-ejemplo
+php armazon
 ```
 
-El servidor de aplicación de ARMAZÓN utiliza la extensión Swoole y para ejecutarse deberás usar un sistema operativo basado en linux.
+Para correr la aplicación puedes usar PHP-FPM (sobre publico/arranque.php) o el servidor de aplicación de ARMAZÓN.
+
+Para usar el servidor de aplicación de ARMAZÓN necesita instalar la extensión Swoole 1.8+ e iniciarlo usando un sistema operativo basado en linux.
 
 ## Intrucciones para instalación de requerimientos (ubuntu)
 
