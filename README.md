@@ -37,6 +37,7 @@ Para usar el servidor de aplicación de ARMAZÓN deberás cumplir con los siguie
 
 **PHP 7**
 ```shell
+sudo apt-get update
 sudo apt-get install python-software-properties
 sudo apt-get install language-pack-en-base
 sudo LC_ALL=en_US.UTF-8 add-apt-repository ppa:ondrej/php
@@ -47,7 +48,7 @@ service php7.0-fpm stop
 
 **Swoole**
 ```shell
-sudo apt-get install libcurl4-openssl-dev
+sudo apt-get install libcurl4-openssl-dev build-essential
 sudo pecl install swoole
 sudo echo "extension=swoole.so" > /etc/php/mods-available/swoole.ini
 sudo ln -s /etc/php/mods-available/swoole.ini /etc/php/7.0/cli/conf.d/20-swoole.ini
