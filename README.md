@@ -5,6 +5,7 @@
 [![Test Coverage](https://codeclimate.com/github/armazon/armazon/badges/coverage.svg)](https://codeclimate.com/github/armazon/armazon/coverage) 
 [![Latest Stable Version](https://poser.pugx.org/armazon/armazon/v/stable)](https://packagist.org/packages/armazon/armazon) 
 [![Latest Unstable Version](https://poser.pugx.org/armazon/armazon/v/unstable)](https://packagist.org/packages/armazon/armazon) 
+[![Total Downloads](https://poser.pugx.org/armazon/armazon/downloads)](https://packagist.org/packages/armazon/armazon) 
 [![License](https://poser.pugx.org/armazon/armazon/license)](https://packagist.org/packages/armazon/armazon) 
 
 **Marco de Trabajo y Servidor de Aplicación PHP de Alto Rendimiento y Flexibilidad.**
