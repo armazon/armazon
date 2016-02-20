@@ -1,20 +1,19 @@
-# ARMAZÓN PHP
+# ARMAZÓN
 
 [![Build Status](https://travis-ci.org/armazon/armazon.svg?branch=master)](https://travis-ci.org/armazon/armazon) 
 [![Code Climate](https://codeclimate.com/github/armazon/armazon/badges/gpa.svg)](https://codeclimate.com/github/armazon/armazon) 
 [![Test Coverage](https://codeclimate.com/github/armazon/armazon/badges/coverage.svg)](https://codeclimate.com/github/armazon/armazon/coverage) 
 [![Latest Stable Version](https://poser.pugx.org/armazon/armazon/v/stable)](https://packagist.org/packages/armazon/armazon) 
 [![Latest Unstable Version](https://poser.pugx.org/armazon/armazon/v/unstable)](https://packagist.org/packages/armazon/armazon) 
-[![Total Downloads](https://poser.pugx.org/armazon/armazon/downloads)](https://packagist.org/packages/armazon/armazon) 
 [![License](https://poser.pugx.org/armazon/armazon/license)](https://packagist.org/packages/armazon/armazon) 
 
-Marco de Trabajo y Servidor de Aplicación de Alto Rendimiento y Flexibilidad.
+**Marco de Trabajo y Servidor de Aplicación PHP de Alto Rendimiento y Flexibilidad.**
 
 Este proyecto fue desarrollado orgullosamente en **español**. 
 
 ## Inicio rápido
 
-Para iniciar una aplicación web con ARMAZÓN solo debes ejecutar el siguiente comando en la consola:
+Para iniciar una aplicación web con ARMAZÓN solo debes ejecutar lo siguiente en la consola:
 
 ```shell
 composer create-project armazon/proyecto-base dir-ejemplo
@@ -22,11 +21,18 @@ cd dir-ejemplo
 php armazon
 ```
 
-Para correr la aplicación puedes usar PHP-FPM (sobre publico/arranque.php) o el servidor de aplicación de ARMAZÓN.
+## Requerimientos
 
-Para usar el servidor de aplicación de ARMAZÓN necesita instalar la extensión Swoole 1.8+ e iniciarlo usando un sistema operativo basado en linux.
+Para ejecutar tu nueva aplicación puedes usar PHP-FPM (usar publico/arranque.php) o el servidor de aplicación de ARMAZÓN.
 
-## Intrucciones para instalación de requerimientos (ubuntu)
+Para usar el servidor de aplicación de ARMAZÓN deberás cumplir con los siguientes requerimientos:
+
+- PHP 7.0 o mayor.
+- Extensión Swoole 1.8 o mayor.
+- Extensión POSIX.
+- Sistema operativo basado en linux.
+
+## Intrucciones para instalar requerimientos (ubuntu)
 
 **PHP 7**
 ```shell
@@ -34,7 +40,7 @@ sudo apt-get install python-software-properties
 sudo apt-get install language-pack-en-base
 sudo LC_ALL=en_US.UTF-8 add-apt-repository ppa:ondrej/php
 sudo apt-get update
-sudo apt-get install php7.0-cli php7.0-curl php7.0-dev php7.0-fpm php7.0-gd php7.0-mysql php7.0-opcache php-pear -y
+sudo apt-get install php7.0-cli php7.0-curl php7.0-dev php7.0-fpm php7.0-gd php7.0-mysql php7.0-opcache php-pear
 service php7.0-fpm stop
 ```
 
@@ -52,9 +58,10 @@ Por transparencia en nuestro ciclo de liberación y en el esfuerzo por mantener 
 
 ## ¿Qué falta?
 
-- Documentación
-- Pruebas de rendimiento contra otros marcos de trabajo
-- Pruebas unitarias que cubran el 100% del código
-- Implementación de middlewares (viene en camino)
-- Componentes básicos como el manejador de sesiones, ODMs, autenticación, etc (mientras tanto diviértete con Composer)
-- Corregir muchos errores tanto actuales como futuros
+- Documentación.
+- Pruebas de rendimiento contra otros marcos de trabajo.
+- Pruebas unitarias que cubran el 100% del código.
+- Implementación de middlewares (viene en camino).
+- Componentes básicos como el manejador de sesiones, ODMs, autenticación, etc (mientras tanto diviértete con Composer).
+- Corregir errores tanto actuales como futuros.
+- Crear comunidad de colaboradores que sientan orgullo de ser latinos.
