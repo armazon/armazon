@@ -61,7 +61,7 @@ Por transparencia en nuestro ciclo de liberación y en el esfuerzo por mantener 
 ## ¿Qué falta?
 
 - Documentación.
-- Pruebas de rendimiento contra otros marcos de trabajo.
+- Pruebas de rendimiento contra otros marcos de trabajo. [Pruebas sin comparación] (http://semver.org/).
 - Pruebas unitarias que cubran el 100% del código.
 - Implementación de middlewares (viene en camino).
 - Componentes básicos como el manejador de sesiones, ODMs, autenticación, etc (mientras tanto diviértete con Composer).
