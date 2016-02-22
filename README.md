@@ -31,6 +31,8 @@ Para usar el servidor de aplicación de ARMAZÓN deberás cumplir con los siguie
 - PHP 7.0 o mayor.
 - Extensión Swoole 1.8 o mayor.
 - Extensión POSIX.
+- Extensión PDO (solo en caso de usar modelos relacionales).
+- Extensión Mbstring.
 - Sistema operativo basado en linux.
 
 ## Intrucciones para instalar requerimientos (ubuntu)
@@ -61,7 +63,7 @@ Por transparencia en nuestro ciclo de liberación y en el esfuerzo por mantener 
 ## ¿Qué falta?
 
 - Documentación.
-- Pruebas de rendimiento contra otros marcos de trabajo. [Pruebas sin comparación] (http://semver.org/).
+- Pruebas de rendimiento contra otros marcos de trabajo. [Pruebas sin comparación] (https://github.com/armazon/armazon/wiki/Pruebas-de-Rendimiento-(v1)).
 - Pruebas unitarias que cubran el 100% del código.
 - Implementación de middlewares (viene en camino).
 - Componentes básicos como el manejador de sesiones, ODMs, autenticación, etc (mientras tanto diviértete con Composer).
