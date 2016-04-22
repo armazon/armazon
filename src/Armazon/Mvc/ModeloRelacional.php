@@ -3,7 +3,6 @@
 namespace Armazon\Mvc;
 
 use Armazon\Nucleo\Aplicacion;
-use SebastianBergmann\GlobalState\RuntimeException;
 
 /**
  * Capa Modelo del patrón MVC.
@@ -38,7 +37,7 @@ abstract class ModeloRelacional extends \stdClass
      * @param string $campo
      * @param mixed $valor
      * @param string $tipo
-     * @return array|bool
+     * @return $this
      */
     public static function buscarPrimeroPorCampo(string $campo, $valor, string $tipo = 'auto')
     {
