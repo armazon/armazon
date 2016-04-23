@@ -45,8 +45,8 @@ class Relacional
         if (
             !isset($config['usuario'],
             $config['contrasena'],
-            $config['servidores'][0][0],
-            $config['servidores'][0][1])
+            $config['dsn'][0][0],
+            $config['dsn'][0][1])
         ) {
             throw new \InvalidArgumentException('Faltan configuraciones requeridas o algunas son inválidas.', 4006);
         }
