@@ -116,7 +116,7 @@ class Relacional
      * @param string $mensaje
      * @param mixed $detalle
      */
-    private function reportar(string $mensaje, $detalle = null)
+    private function reportar($mensaje, $detalle = null)
     {
         echo '<div style="font-weight: bold; font-family: verdana, arial, helvetica, sans-serif; '
             . 'font-size: 13px; line-height: 16px; color: #000; background-color: #E6E6FF; border: solid 1px #99F; '
@@ -134,7 +134,7 @@ class Relacional
      *
      * @throws \RuntimeException
      */
-    public function seleccionarBd(string $basedatos): self
+    public function seleccionarBd($basedatos)
     {
         if ($this->componentePdo->exec('USE ' . $basedatos) !== false) {
             return $this;
@@ -151,7 +151,7 @@ class Relacional
      *
      * @return string Retorna valor escapado para MySQL
      */
-    public function prepararValor($valor, string $tipo = 'auto'): string
+    public function prepararValor($valor, $tipo = 'auto')
     {
         if (is_array($valor)) {
 
@@ -212,7 +212,7 @@ class Relacional
      * @throws \RuntimeException
      * @throws \InvalidArgumentException
      */
-    public function obtener(string $indizar_por = null, string $agrupar_por = null, string $clase = null, array $clase_args = [])
+    public function obtener($indizar_por = null, $agrupar_por = null, $clase = null, array $clase_args = [])
     {
         // Se obtiene resultados desde cache según el caso
         if ($this->cacheActivado && $this->cacheResultado !== false) {
@@ -357,7 +357,7 @@ class Relacional
      * @throws \RuntimeException
      * @throws \InvalidArgumentException
      */
-    public function obtenerPrimero(string $clase = null, array $clase_args = [])
+    public function obtenerPrimero($clase = null, array $clase_args = [])
     {
         $resultado = $this->obtener(null, null, $clase, $clase_args);
 
@@ -380,7 +380,7 @@ class Relacional
      * @throws \InvalidArgumentException
      * @throws \RuntimeException
      */
-    public function ejecutar(): bool
+    public function ejecutar()
     {
         // Validamos la sentencia a ejecutar
         if (!isset($this->sentencia)) {
@@ -412,7 +412,7 @@ class Relacional
      *
      * @return string
      */
-    public function ultimoIdInsertado(): string
+    public function ultimoIdInsertado()
     {
         return $this->componentePdo->lastInsertId();
     }
@@ -427,7 +427,7 @@ class Relacional
      *
      * @return \PDOStatement
      */
-    public function preparar(): \PDOStatement
+    public function preparar()
     {
         // Validamos la sentencia a preparar
         if (!isset($this->sentencia)) {
@@ -442,7 +442,7 @@ class Relacional
      *
      * @return \PDO
      */
-    public function obtenerPdo(): \PDO
+    public function obtenerPdo()
     {
         return $this->componentePdo;
     }
@@ -470,7 +470,7 @@ class Relacional
      *
      * @throws \RuntimeException
      */
-    public function cache(string $llave, int $ttl = 3600, bool $sobrescribir = false): self
+    public function cache($llave, $ttl = 3600, $sobrescribir = false)
     {
         if (!isset($this->componenteCache)) {
             throw new \RuntimeException('Pretende usar el componente de cache pero no fue registrado.');
@@ -501,7 +501,7 @@ class Relacional
      *
      * @return bool
      */
-    public function iniciarTransaccion(): bool
+    public function iniciarTransaccion()
     {
         return $this->componentePdo->beginTransaction();
     }
@@ -511,7 +511,7 @@ class Relacional
      *
      * @return bool
      */
-    public function terminarTransaccion(): bool
+    public function terminarTransaccion()
     {
         return $this->componentePdo->commit();
     }
@@ -521,7 +521,7 @@ class Relacional
      *
      * @return bool
      */
-    public function enTransaccion(): bool
+    public function enTransaccion()
     {
         return $this->componentePdo->inTransaction();
     }
@@ -531,9 +531,9 @@ class Relacional
      *
      * @return bool
      */
-    public function cancelarTransaccion(): bool
+    public function cancelarTransaccion()
     {
-        return $this->componentePdo->rollback();
+        return $this->componentePdo->rollBack();
     }
 
 
@@ -549,7 +549,7 @@ class Relacional
      *
      * @throws \RuntimeException si la sentencia es invalida
      */
-    public function sql(string $sentencia): self
+    public function sql($sentencia)
     {
         $this->reiniciarConsulta();
 
@@ -578,7 +578,7 @@ class Relacional
      *
      * @return Relacional
      */
-    public function seleccionar($campos, string $tabla): self
+    public function seleccionar($campos, $tabla)
     {
         $this->reiniciarConsulta();
 
@@ -602,7 +602,7 @@ class Relacional
      *
      * @return Relacional
      */
-    public function unirTabla(string $tabla, string $campo1, string $campo2, string $modo = 'INNER'): self
+    public function unirTabla($tabla, $campo1, $campo2, $modo = 'INNER')
     {
         $this->sentencia .= " $modo JOIN $tabla ON `$campo1` = `$campo2`";
 
@@ -616,7 +616,7 @@ class Relacional
      *
      * @return Relacional
      */
-    public function donde(array $params = null): self
+    public function donde(array $params = null)
     {
         if ($params) {
             $terminos_sql = [];
@@ -678,7 +678,7 @@ class Relacional
      *
      * @return Relacional
      */
-    public function ordenarPor(string $orden): self
+    public function ordenarPor($orden)
     {
         $this->sentencia .= ' ORDER BY ' . trim($orden);
 
@@ -692,7 +692,7 @@ class Relacional
      *
      * @return Relacional
      */
-    public function agruparPor(string $grupo): self
+    public function agruparPor($grupo)
     {
         $this->sentencia .= ' GROUP BY ' . trim($grupo);
 
@@ -707,7 +707,7 @@ class Relacional
      *
      * @return Relacional
      */
-    public function limitar(int $pos, int $limite = null): self
+    public function limitar($pos, $limite = null)
     {
         if ($limite) {
             $this->sentencia .= ' LIMIT ' . $pos . ',' . $limite;
@@ -726,7 +726,7 @@ class Relacional
      *
      * @return Relacional
      */
-    public function actualizar(string $tabla, array $params): self
+    public function actualizar($tabla, array $params)
     {
         $this->reiniciarConsulta();
 
@@ -757,7 +757,7 @@ class Relacional
      *
      * @return Relacional
      */
-    public function insertar(string $tabla, array $params): self
+    public function insertar($tabla, array $params)
     {
         $this->reiniciarConsulta();
 
@@ -790,7 +790,7 @@ class Relacional
      *
      * @return Relacional
      */
-    public function eliminar(string $tabla): self
+    public function eliminar($tabla)
     {
         $this->reiniciarConsulta();
 
@@ -806,7 +806,7 @@ class Relacional
      *
      * @return string
      */
-    public function obtenerSql(bool $formato_html = false): string
+    public function obtenerSql($formato_html = false)
     {
         if ($formato_html) {
             return '<code style="font-weight: bold; '
