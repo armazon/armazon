@@ -32,10 +32,10 @@ class Peticion
      * @return array
      */
     public static function procesarParametros(
-        string $cadena,
-        string $formato = 'application/x-www-form-urlencoded',
+        $cadena,
+        $formato = 'application/x-www-form-urlencoded',
         $porDefecto = []
-    ): array {
+    ) {
         $resultado = $porDefecto;
 
         if ('application/x-www-form-urlencoded' == $formato) {
@@ -91,7 +91,7 @@ class Peticion
      *
      * @return array
      */
-    public static function prepararArchivos(array $archivos, bool $inicio = true): array
+    public static function prepararArchivos(array $archivos, $inicio = true)
     {
         $final = [];
         foreach ($archivos as $nombre => $archivo) {
@@ -124,7 +124,7 @@ class Peticion
      *
      * @return self
      */
-    public static function crearDesdeGlobales(): self
+    public static function crearDesdeGlobales()
     {
         // Preparamos Metodo
         if (isset($_SERVER['REQUEST_METHOD'])) {
@@ -212,7 +212,7 @@ class Peticion
      *
      * @return self
      */
-    public static function crearDesdeSwoole(\swoole_http_request $req): self
+    public static function crearDesdeSwoole(\swoole_http_request $req)
     {
         // Preparamos Metodo
         $metodo = $req->server['request_method'];
@@ -293,8 +293,8 @@ class Peticion
     }
 
     public function __construct(
-        string $url,
-        string $metodo = 'GET',
+        $url,
+        $metodo = 'GET',
         array $parametros = null,
         array $cabeceras = null,
         array $galletas = null,
@@ -375,7 +375,7 @@ class Peticion
      * @param string $nombre
      * @param string $valor
      */
-    public function definirCabecera(string $nombre, string $valor)
+    public function definirCabecera($nombre, $valor)
     {
         $cabeceras[$nombre] = $valor;
     }
@@ -388,7 +388,7 @@ class Peticion
      *
      * @return mixed
      */
-    public function obtenerCabecera(string $nombre, $porDefecto = null)
+    public function obtenerCabecera($nombre, $porDefecto = null)
     {
         return isset($this->cabeceras[$nombre]) ? $this->cabeceras[$nombre] : $porDefecto;
     }
@@ -408,7 +408,7 @@ class Peticion
      *
      * @return bool
      */
-    public function esAjax(): bool
+    public function esAjax()
     {
         if (isset($this->cabeceras['X-Requested-With']) && strtolower($this->cabeceras['X-Requested-With']) == 'xmlhttprequest') {
             return true;
@@ -422,7 +422,7 @@ class Peticion
      *
      * @return bool
      */
-    public function esSegura(): bool
+    public function esSegura()
     {
         if ($this->esquema == 'https' || $this->puerto == 443) {
             return true;
@@ -439,7 +439,7 @@ class Peticion
      *
      * @return mixed
      */
-    public function filtrarVar($valor, string $filtro)
+    public function filtrarVar($valor, $filtro)
     {
         if ($filtro == 'email') {
             $dotString = '(?:[A-Za-z0-9!#$%&*+=?^_`{|}~\'\\/-]|(?<!\\.|\\A)\\.(?!\\.|@))';
@@ -507,7 +507,7 @@ class Peticion
      *
      * @return bool|mixed  El valor del parámetro o falso en caso de fallar el filtro
      */
-    public function obtenerGet($nombre, $porDefecto = null, string $filtro = null)
+    public function obtenerGet($nombre, $porDefecto = null, $filtro = null)
     {
         if (isset($this->parametrosGet[$nombre])) {
             if (isset($filtro) && !$this->filtrarVar($this->parametrosGet[$nombre], $filtro)) {
@@ -531,7 +531,7 @@ class Peticion
      *
      * @return mixed  El valor del parámetro o falso en caso de fallar el filtro
      */
-    public function obtenerParam(string $nombre, $porDefecto = null, string $filtro = null)
+    public function obtenerParam($nombre, $porDefecto = null, $filtro = null)
     {
         if (isset($this->parametros[$nombre])) {
             if (isset($filtro) && !$this->filtrarVar($this->parametros[$nombre], $filtro)) {

@@ -23,7 +23,7 @@ interface AdaptadorInterface {
      *
      * @return bool
      */
-    public function guardar(string $llave, $valor, int $expiracion = 0): bool;
+    public function guardar($llave, $valor, $expiracion = 0);
 
     /**
      * Obtiene el valor de la llave.
@@ -32,7 +32,7 @@ interface AdaptadorInterface {
      *
      * @return mixed
      */
-    public function obtener(string $llave);
+    public function obtener($llave);
 
     /**
      * Elimina llave del cache y su valor.
@@ -41,7 +41,7 @@ interface AdaptadorInterface {
      *
      * @return bool
      */
-    public function eliminar(string $llave);
+    public function eliminar($llave);
 
     /**
      * Verifica si la llave existe.
@@ -50,5 +50,5 @@ interface AdaptadorInterface {
      *
      * @return bool
      */
-    public function existe(string $llave): bool;
+    public function existe($llave);
 }

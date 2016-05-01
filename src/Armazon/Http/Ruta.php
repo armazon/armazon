@@ -17,7 +17,7 @@ class Ruta
      *
      * @return self
      */
-    public static function generarEstadoHttp(int $estado): self
+    public static function generarEstadoHttp($estado)
     {
         $ruta = new self();
         $ruta->tipo = 'estado_http';

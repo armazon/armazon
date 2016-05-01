@@ -30,7 +30,7 @@ class Traductor
      *
      * @param string $directorio
      */
-    public function definirDirTraducciones(string $directorio)
+    public function definirDirTraducciones($directorio)
     {
         $temp = realpath($directorio);
 
@@ -46,7 +46,7 @@ class Traductor
      *
      * @param string $idioma
      */
-    public function cargarIdioma(string $idioma)
+    public function cargarIdioma($idioma)
     {
         // Preparamos camino del archivo usando el directorio base
         $archivo = $this->dir_traducciones . DIRECTORY_SEPARATOR . $idioma . '.php';
@@ -68,7 +68,7 @@ class Traductor
      *
      * @param string $idioma
      */
-    public function definirIdioma(string $idioma)
+    public function definirIdioma($idioma)
     {
         $this->idioma = $idioma;
     }
@@ -80,7 +80,7 @@ class Traductor
      *
      * @return string
      */
-    public function t(string $texto): string
+    public function t($texto)
     {
         // Cambiamos valor en caso de encontrar traducción
         if (isset($this->traducciones[$this->idioma][$texto])) {

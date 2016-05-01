@@ -9,7 +9,12 @@ class Swoole extends Base
     public $usarDemonio = true;
     public $archivoRegistros;
 
-    private function detectarNucleosCPU(): int
+    /**
+     * Devuelve la cantidad de nucleos del CPU
+     * 
+     * @return int
+     */
+    private function detectarNucleosCPU()
     {
         $cantidad_cpu = 1;
         if (is_file('/proc/cpuinfo')) {

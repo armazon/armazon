@@ -77,7 +77,7 @@ class Vista extends \stdClass
         }
     }
 
-    private function cargarContenido(string $vista)
+    private function cargarContenido($vista)
     {
         // Preparamos ubicación del archivo de la vista
         $vista = $this->dirVistas . DIRECTORY_SEPARATOR . $vista . '.phtml';
@@ -109,7 +109,7 @@ class Vista extends \stdClass
      * @param string $id Identificador del filtro
      * @param callable $fn Función que filtrará el valor
      */
-    public function registrarFiltro(string $id, callable $fn)
+    public function registrarFiltro($id, callable $fn)
     {
         $this->filtros[$id] = $fn;
     }
@@ -122,7 +122,7 @@ class Vista extends \stdClass
      *
      * @return string
      */
-    private function filtrarValor(string $filtro, string $texto): string
+    private function filtrarValor($filtro, $texto)
     {
         if (isset($this->filtros[$filtro])) {
             $texto = $this->filtros[$filtro]($texto);
@@ -138,7 +138,7 @@ class Vista extends \stdClass
      *
      * @return string
      */
-    public function renderizar(string $vista): string
+    public function renderizar($vista)
     {
         $this->contenido = $this->cargarContenido($vista);
 

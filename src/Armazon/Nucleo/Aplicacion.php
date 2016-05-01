@@ -96,7 +96,7 @@ class Aplicacion
      *
      * @return bool
      */
-    private function autoCargadorInterno(string $clase): bool
+    private function autoCargadorInterno($clase)
     {
         // Quitamos la base de la clase
         $clase = ltrim($clase, '\\');
@@ -121,7 +121,7 @@ class Aplicacion
      *
      * @return Aplicacion
      */
-    public static function instanciar(): self
+    public static function instanciar()
     {
         if (isset(self::$instancia)) {
             return self::$instancia;
@@ -142,7 +142,7 @@ class Aplicacion
      *
      * @throws \InvalidArgumentException Previene el reemplazo de un componente ya activado
      */
-    public function registrarComponente(string $nombre, Closure $definicion, bool $singleton = true)
+    public function registrarComponente($nombre, Closure $definicion, $singleton = true)
     {
         if (isset($this->componentes[$nombre]['instancia'])) {
             throw new \InvalidArgumentException("El componente '{$nombre}' ya fue registrado y activado.");
@@ -161,7 +161,7 @@ class Aplicacion
      * @return mixed La instancia del componente.
      * @throws \InvalidArgumentException Si el componente no está registrado
      */
-    public function obtenerComponente(string $nombre, bool $nueva_instancia = false)
+    public function obtenerComponente($nombre, $nueva_instancia = false)
     {
         if (!isset($this->componentes[$nombre])) {
             throw new \InvalidArgumentException("El componente '{$nombre}' no está registrado.");
@@ -190,7 +190,7 @@ class Aplicacion
      *
      * @return bool
      */
-    public function existeComponente($nombre): bool
+    public function existeComponente($nombre)
     {
         return isset($this->componentes[$nombre]);
     }
@@ -212,7 +212,7 @@ class Aplicacion
      *
      * @param string $nombre Nombre del componente Bd/Relacional.
      */
-    public function vincularBdRelacional(string $nombre)
+    public function vincularBdRelacional($nombre)
     {
         $this->bdRelacional = $nombre;
     }
@@ -222,7 +222,7 @@ class Aplicacion
      *
      * @return Relacional
      */
-    public function obtenerBdRelacional(): Relacional
+    public function obtenerBdRelacional()
     {
         return $this->obtenerComponente($this->bdRelacional);
     }
@@ -234,7 +234,7 @@ class Aplicacion
      *
      * @param string $zona_tiempo
      */
-    public function definirZonaTiempo(string $zona_tiempo)
+    public function definirZonaTiempo($zona_tiempo)
     {
         if (!date_default_timezone_set($zona_tiempo)) {
             throw new \InvalidArgumentException('La zona de tiempo introducida es inválida.');
@@ -248,7 +248,7 @@ class Aplicacion
      *
      * @return string
      */
-    public function obtenerZonaTiempo(): string
+    public function obtenerZonaTiempo()
     {
         return date_default_timezone_get();
     }
@@ -258,7 +258,7 @@ class Aplicacion
      *
      * @param string $codificacion
      */
-    public function definirCodificacion(string $codificacion)
+    public function definirCodificacion($codificacion)
     {
         mb_internal_encoding($codificacion);
 
@@ -276,7 +276,7 @@ class Aplicacion
      *
      * @return string
      */
-    public function obtenerCodificacion(): string
+    public function obtenerCodificacion()
     {
         return $this->codificacion;
     }
@@ -286,7 +286,7 @@ class Aplicacion
      *
      * @param string $uri
      */
-    public function definirUriBase(string $uri)
+    public function definirUriBase($uri)
     {
         // Agregamos / al inicio en caso necesario
         if (strpos($uri, '/') !== 0) {
@@ -306,7 +306,7 @@ class Aplicacion
      *
      * @param string $directorio
      */
-    public function definirDirApp(string $directorio)
+    public function definirDirApp($directorio)
     {
         $this->dirApp = realpath($directorio);
 
@@ -319,7 +319,7 @@ class Aplicacion
      *
      * @return string
      */
-    public function obtenerDirApp(): string
+    public function obtenerDirApp()
     {
         return $this->dirApp;
     }
@@ -330,7 +330,7 @@ class Aplicacion
      *
      * @param string $ambiente
      */
-    public function definirAmbiente(string $ambiente)
+    public function definirAmbiente($ambiente)
     {
         $this->ambiente = $ambiente;
     }
@@ -340,7 +340,7 @@ class Aplicacion
      *
      * @param string $nombre
      */
-    public function definirNombre(string $nombre)
+    public function definirNombre($nombre)
     {
         $this->id = $nombre;
     }
@@ -350,7 +350,7 @@ class Aplicacion
      *
      * @param string $directorio
      */
-    public function registrarDirAutoCargado(string $directorio)
+    public function registrarDirAutoCargado($directorio)
     {
         $this->dirAutoCargado[] = realpath($directorio);
     }
@@ -417,7 +417,7 @@ class Aplicacion
      * @return Controlador
      * @throws \RuntimeException
      */
-    private function obtenerControlador(string $nombre, Peticion $peticion, Respuesta $respuesta): Controlador
+    private function obtenerControlador($nombre, Peticion $peticion, Respuesta $respuesta)
     {
         // Preparamos nombre de clase del controlador
         $clase = $nombre . 'Controlador';
@@ -456,7 +456,7 @@ class Aplicacion
      * @return Respuesta
      * @throws \RuntimeException
      */
-    private function despacharRuta(Peticion $peticion, Ruta $ruta, int $estadoHttp = null): Respuesta
+    private function despacharRuta(Peticion $peticion, Ruta $ruta, $estadoHttp = null)
     {
         // Preparamos respuesta a devolver
         $respuesta = new Respuesta();
@@ -552,7 +552,7 @@ class Aplicacion
      *
      * @return Respuesta
      */
-    public function generarRespuestaError(Peticion $peticion, int $estadoHttp = 500, \Throwable $error = null): Respuesta
+    public function generarRespuestaError(Peticion $peticion, $estadoHttp = 500, \Throwable $error = null)
     {
         // Preparamos respuesta a arrojar
         $respuesta = new Respuesta();
@@ -592,7 +592,7 @@ class Aplicacion
      *
      * @return Respuesta
      */
-    public function procesarPetición(Peticion $peticion): Respuesta
+    public function procesarPetición(Peticion $peticion)
     {
         try {
             // Verificamos si la aplicación está preparada

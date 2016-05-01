@@ -19,7 +19,7 @@ class Enrutador
      *
      * @return string
      */
-    private function normalizarUri(string $uri): string
+    private function normalizarUri($uri)
     {
         // Excluimos los queries del URI
         if (($temp = strpos($uri, '?')) !== false) {
@@ -48,7 +48,7 @@ class Enrutador
      * @param array $parametros
      * @param int $estado_http
      */
-    public function agregarRuta($metodo, string $ruta, $accion, array $parametros = null, int $estado_http = 200)
+    public function agregarRuta($metodo, $ruta, $accion, array $parametros = null, $estado_http = 200)
     {
         // Normalizamos el uri de la ruta argumentada
         $ruta = $this->normalizarUri($ruta);
@@ -128,7 +128,7 @@ class Enrutador
      * @param int $estado_http
      * @param mixed $accion
      */
-    public function agregarRutaEstadoHttp(int $estado_http, $accion)
+    public function agregarRutaEstadoHttp($estado_http, $accion)
     {
         $this->rutas_simples[$estado_http]['accion'] = $accion;
         $this->rutas_simples[$estado_http]['estado_http'] = $estado_http;
@@ -139,7 +139,7 @@ class Enrutador
      *
      * @return array
      */
-    public function obtenerArbolRutas(): array
+    public function obtenerArbolRutas()
     {
         return $this->arbol_rutas;
     }
@@ -149,7 +149,7 @@ class Enrutador
      *
      * @return array
      */
-    public function obtenerRutasSimples(): array
+    public function obtenerRutasSimples()
     {
         return $this->rutas_simples;
     }
@@ -179,7 +179,7 @@ class Enrutador
      *
      * @param string $uri
      */
-    public function definirUriBase(string $uri)
+    public function definirUriBase($uri)
     {
         $this->uri_base = $this->normalizarUri($uri);
     }
@@ -192,7 +192,7 @@ class Enrutador
      *
      * @return Ruta
      */
-    private function prepararRuta($valor, int $estado_http = null): Ruta
+    private function prepararRuta($valor, $estado_http = null)
     {
         // Instanciamos ruta
         $ruta = new Ruta();
@@ -252,7 +252,7 @@ class Enrutador
      *
      * @return Ruta
      */
-    public function buscar(string $metodo, $uri): Ruta
+    public function buscar($metodo, $uri)
     {
 //        echo "buscando - {$uri}<br/>";
         // Verificamos si el argumento URI es un estado http

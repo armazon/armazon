@@ -33,7 +33,7 @@ class Memcache implements AdaptadorInterface
      *
      * @return bool
      */
-    public function guardar(string $llave, $valor, int $expiracion = 0): bool
+    public function guardar($llave, $valor, $expiracion = 0)
     {
         return $this->gestor->set($llave, $valor, null, $expiracion);
     }
@@ -45,7 +45,7 @@ class Memcache implements AdaptadorInterface
      *
      * @return mixed
      */
-    public function obtener(string $llave)
+    public function obtener($llave)
     {
         return $this->gestor->get($llave);
     }
@@ -57,7 +57,7 @@ class Memcache implements AdaptadorInterface
      *
      * @return bool
      */
-    public function eliminar(string $llave): bool
+    public function eliminar($llave)
     {
         return $this->gestor->delete($llave);
     }
@@ -67,7 +67,7 @@ class Memcache implements AdaptadorInterface
      *
      * @return bool
      */
-    public function limpiar(): bool
+    public function limpiar()
     {
         return $this->gestor->flush();
     }
@@ -79,7 +79,7 @@ class Memcache implements AdaptadorInterface
      *
      * @return bool
      */
-    public function existe(string $llave): bool
+    public function existe($llave)
     {
         $temp = $this->gestor->get(array($llave));
 

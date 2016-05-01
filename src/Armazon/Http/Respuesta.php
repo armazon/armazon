@@ -41,7 +41,7 @@ class Respuesta
      * @param string $nombre
      * @param string $valor
      */
-    public function definirCabecera(string $nombre, string $valor)
+    public function definirCabecera($nombre, $valor)
     {
         $this->cabeceras[$nombre] = $valor;
     }
@@ -51,7 +51,7 @@ class Respuesta
      *
      * @return array
      */
-    public function obtenerCabeceras(): array
+    public function obtenerCabeceras()
     {
         return $this->cabeceras;
     }
@@ -63,16 +63,25 @@ class Respuesta
         $this->$codificacion = $codificacion;
     }
 
-    public function obtenerCodificacion(): string
+    /**
+     * @return string
+     */
+    public function obtenerCodificacion()
     {
         return $this->codificacion;
     }
 
-    public function definirEstadoHttp(int $estado) {
+    /**
+     * @param int $estado
+     */
+    public function definirEstadoHttp($estado) {
         $this->estadoHttp = $estado;
     }
 
-    public function obtenerEstadoHttp():int {
+    /**
+     * @return int
+     */
+    public function obtenerEstadoHttp() {
         return $this->estadoHttp;
     }
 
@@ -88,7 +97,10 @@ class Respuesta
         }
     }
 
-    public function obtenerContenido(): string {
+    /**
+     * @return string
+     */
+    public function obtenerContenido() {
         return $this->contenido;
     }
 
@@ -102,7 +114,10 @@ class Respuesta
         }
     }
 
-    public function obtenerTipoContenido(): string
+    /**
+     * @return string
+     */
+    public function obtenerTipoContenido()
     {
         return $this->tipoContenido;
     }
@@ -131,7 +146,10 @@ class Respuesta
         return $this->enviado = true;
     }
 
-    public function fueEnviado(): bool
+    /**
+     * @return bool
+     */
+    public function fueEnviado()
     {
         return $this->enviado;
     }

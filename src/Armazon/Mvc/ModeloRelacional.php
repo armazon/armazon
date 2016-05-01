@@ -39,7 +39,7 @@ abstract class ModeloRelacional extends \stdClass
      * @param string $tipo
      * @return $this
      */
-    public static function buscarPrimeroPorCampo(string $campo, $valor, string $tipo = 'auto')
+    public static function buscarPrimeroPorCampo($campo, $valor, $tipo = 'auto')
     {
         // Preparamos variables requeridas
         $metadatos = get_class_vars(static::class);
@@ -107,7 +107,7 @@ abstract class ModeloRelacional extends \stdClass
         }
     }
 
-    private function cumpleRequerimiento($campo): bool
+    private function cumpleRequerimiento($campo)
     {
         if ($this->campos[$campo]['requerido'] && (!isset($this->{$campo}) || $this->{$campo} === '')) {
             return false;

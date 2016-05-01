@@ -37,6 +37,6 @@ abstract class Controlador
      *
      * @return Ruta|Respuesta
      */
-    public function alIniciar(string $controlador, string $accion)
+    public function alIniciar($controlador, $accion)
     {}
 }
