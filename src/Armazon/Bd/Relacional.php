@@ -3,18 +3,14 @@
 namespace Armazon\Bd;
 
 use Armazon\Cache\AdaptadorInterface;
-use Armazon\Nucleo\Aplicacion;
 
 /**
  * Envoltura de PDO para trabajar Bases de Datos Relacionales.
  */
 class Relacional
 {
-    /** @var Aplicacion */
-    private $app;
-
     /** @var \PDO */
-    private $componentePdo;
+    private $pdo;
 
     /** @var AdaptadorInterface */
     private $componenteCache;
@@ -30,24 +26,15 @@ class Relacional
     /**
      * Constructor con configuraciones.
      *
-     * @param Aplicacion $app
      * @param array $config
      *
      * @throws \RuntimeException
      * @throws \InvalidArgumentException
      */
-    public function __construct(Aplicacion $app, array $config)
+    public function __construct(array $config)
     {
-        // Inyectamos la instancia de aplicación
-        $this->app = $app;
-
         // Verificamos configuraciones requeridas
-        if (
-            !isset($config['usuario'],
-            $config['contrasena'],
-            $config['dsn'][0][0],
-            $config['dsn'][0][1])
-        ) {
+        if (!isset($config['usuario'], $config['contrasena'], $config['dsn'])) {
             throw new \InvalidArgumentException('Faltan configuraciones requeridas o algunas son inválidas.', 4006);
         }
 
@@ -55,31 +42,20 @@ class Relacional
             $this->depurar = true;
         }
 
-        // Calculamos orden de conexiones segun peso de cada dsn
-        $pesos = [];
-        foreach ($config['dsn'] as $llave => $dsn) {
-            $pesos[$llave] = $dsn[1];
+        // Convertimos DSN en arreglo según el caso
+        $config['dsn'] = (array) $config['dsn'];
+
+        // Aleatorizamos el orden de los DSN
+        if (count($config['dsn']) > 1) {
+            shuffle($config['dsn']);
         }
-        unset($llave, $dsn);
-        $pesos_total = array_sum($pesos);
-        foreach ($pesos as $llave => $peso) {
-            $pesos[$llave] = ($peso / $pesos_total) * mt_rand(1, 5);
-        }
-        unset($llave, $peso);
-        arsort($pesos);
-        $pesos = array_keys($pesos);
 
         // Nos conectamos al servidor disponible segun orden
         $conectado = false;
-        while (!$conectado && count($pesos)) {
-            $llave = array_shift($pesos);
+        while (!$conectado && count($config['dsn'])) {
+            $dsn = array_shift($config['dsn']);
             try {
-                $this->componentePdo = new \PDO(
-                    $config['dsn'][$llave][0],
-                    $config['usuario'],
-                    $config['contrasena'],
-                    [\PDO::ATTR_TIMEOUT => 1]
-                );
+                $this->pdo = new \PDO($dsn, $config['usuario'], $config['contrasena'], array(\PDO::ATTR_TIMEOUT => 1));
                 $conectado = true;
             } catch (\PDOException $e) {
                 if ($e->getCode() == 1045) {
@@ -95,7 +71,7 @@ class Relacional
 
             // Ejecutamos el comando inicial en caso necesario
             if (isset($config['comando_inicial'])) {
-                $this->componentePdo->exec($config['comando_inicial']);
+                $this->pdo->exec($config['comando_inicial']);
             }
         } else {
             throw new \RuntimeException('No se pudo abrir conexion a la base de datos.');
@@ -107,7 +83,7 @@ class Relacional
      */
     public function __destruct()
     {
-        $this->componentePdo = null;
+        $this->pdo = null;
     }
 
     /**
@@ -136,7 +112,7 @@ class Relacional
      */
     public function seleccionarBd($basedatos)
     {
-        if ($this->componentePdo->exec('USE ' . $basedatos) !== false) {
+        if ($this->pdo->exec('USE ' . $basedatos) !== false) {
             return $this;
         } else {
             throw new \RuntimeException('No se pudo seleccionar base de datos.');
@@ -185,7 +161,7 @@ class Relacional
 
             // Retornamos valor textual
             if ($tipo == 'txt') {
-                return $this->componentePdo->quote($valor);
+                return $this->pdo->quote($valor);
             }
 
             // Retornamos valor numerico
@@ -226,13 +202,13 @@ class Relacional
 
         // Consultamos la sentencia para obtener datos
         $ti = microtime(true);
-        $resultado = $this->componentePdo->query($this->sentencia);
+        $resultado = $this->pdo->query($this->sentencia);
 
         if ($resultado === false) {
 
             if ($this->depurar) {
                 throw new \RuntimeException('La sentencia [ ' . $this->sentencia . ' ] dió el siguiente error: '
-                    . $this->componentePdo->errorInfo() . '.');
+                    . $this->pdo->errorInfo() . '.');
             }
 
             return false;
@@ -389,11 +365,11 @@ class Relacional
 
         // Ejecutamos la sentencia
         $ti = microtime(true);
-        $resultado = $this->componentePdo->exec($this->sentencia);
+        $resultado = $this->pdo->exec($this->sentencia);
 
         if ($resultado === false) {
             if ($this->depurar) {
-                throw new \RuntimeException('La sentencia [ ' . $this->sentencia . ' ] dió el siguiente error: ' . $this->componentePdo->errorInfo() . '.', 103);
+                throw new \RuntimeException('La sentencia [ ' . $this->sentencia . ' ] dió el siguiente error: ' . $this->pdo->errorInfo() . '.', 103);
             }
 
             return false;
@@ -414,7 +390,7 @@ class Relacional
      */
     public function ultimoIdInsertado()
     {
-        return $this->componentePdo->lastInsertId();
+        return $this->pdo->lastInsertId();
     }
 
 
@@ -434,7 +410,7 @@ class Relacional
             throw new \InvalidArgumentException('La sentencia a preparar se encuentra vacia.');
         }
 
-        return $this->componentePdo->prepare($this->sentencia);
+        return $this->pdo->prepare($this->sentencia);
     }
 
     /**
@@ -444,7 +420,7 @@ class Relacional
      */
     public function obtenerPdo()
     {
-        return $this->componentePdo;
+        return $this->pdo;
     }
 
     // METODOS PARA MANEJAR CACHE DE CONSULTAS -------------------------------------------------------------------------
@@ -503,7 +479,7 @@ class Relacional
      */
     public function iniciarTransaccion()
     {
-        return $this->componentePdo->beginTransaction();
+        return $this->pdo->beginTransaction();
     }
 
     /**
@@ -513,7 +489,7 @@ class Relacional
      */
     public function terminarTransaccion()
     {
-        return $this->componentePdo->commit();
+        return $this->pdo->commit();
     }
 
     /**
@@ -523,7 +499,7 @@ class Relacional
      */
     public function enTransaccion()
     {
-        return $this->componentePdo->inTransaction();
+        return $this->pdo->inTransaction();
     }
 
     /**
@@ -533,7 +509,7 @@ class Relacional
      */
     public function cancelarTransaccion()
     {
-        return $this->componentePdo->rollBack();
+        return $this->pdo->rollBack();
     }
 
 
