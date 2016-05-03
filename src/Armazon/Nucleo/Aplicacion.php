@@ -28,17 +28,18 @@ class Aplicacion
     protected $whoops;
 
     public $id = 'armazon';
-    protected $componentes = [];
+    protected $componentes = array();
+    protected $eventos = array();
     protected $bdRelacional = 'bd';
     protected $ambiente = 'desarrollo';
     protected $archivoRutas;
     protected $uriBase = '/';
     protected $dirApp;
-    protected $dirAutoCargado = [];
+    protected $dirAutoCargado = array();
     protected $zonaTiempo;
     protected $codificacion;
     protected $preparada = false;
-    protected $erroresHttp = [
+    protected $erroresHttp = array(
         100 => 'Continúa',
         101 => 'Cambiando protocolo',
         200 => 'OK',
@@ -80,7 +81,7 @@ class Aplicacion
         503 => 'Servicio No Disponible',
         504 => 'Tiempo de Espera en la Pasarela Agotado',
         505 => 'Versión de HTTP No Soportada',
-    ];
+    );
 
     // METODOS PARA EL MANEJO DE LA INSTANCIA --------------------------------------------------------------------------
 
@@ -604,10 +605,37 @@ class Aplicacion
             $ruta = $this->enrutador->buscar($peticion->metodo, $peticion->uri);
 
             // Despachamos ruta encontrada
-            return $this->despacharRuta($peticion, $ruta);
+            $respuesta = $this->despacharRuta($peticion, $ruta);
 
-        } catch (\Throwable $e) {
+            // Ejecutamos evento alProcesarPeticion
+            $this->ejecutarEvento('alProcesarPeticion', array($respuesta));
+
+            return $respuesta;
+
+        } catch (\Exception $e) {
             return $this->generarRespuestaError($peticion, 500, $e);
+        }
+    }
+
+    public function registrarEvento($nombre, callable $definicion, $encadenar = false)
+    {
+        if (!$encadenar || !isset($this->eventos[$nombre])) {
+            $this->eventos[$nombre] = array();
+        }
+
+        $this->eventos[$nombre][] = $definicion;
+    }
+
+    public function ejecutarEvento($nombre, array $argumentos = array(), $eliminarAlEjecutar = false)
+    {
+        if (isset($this->eventos[$nombre])) {
+            foreach ($this->eventos[$nombre] as $definicion) {
+                call_user_func_array($definicion, $argumentos);
+            }
+
+            if ($eliminarAlEjecutar) {
+                unset($this->eventos[$nombre]);
+            }
         }
     }
 }
