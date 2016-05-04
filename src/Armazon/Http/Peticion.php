@@ -218,20 +218,13 @@ class Peticion
         $metodo = $req->server['request_method'];
 
         // Preparamos URL
-        $url = '';
-        if (!empty($req->server['https'])) {
-            if ($req->server['https'] !== 'off') {
-                $url .= 'https';
-            } else {
-                $url .= 'http';
-            }
-        } else {
-            if ($req->server['server_port'] == 443) {
-                $url .= 'https';
-            } else {
-                $url .= 'http';
-            }
+        $url = 'http';
+        if (!empty($req->server['https']) && $req->server['https'] !== 'off') {
+            $url .= 's';
+        } elseif ($req->server['server_port'] == 443) {
+            $url .= 's';
         }
+        
         $url .= '://' . $req->header['host'];
         $url .= $req->server['request_uri'];
         if (isset($req->server['query_string'])) {
@@ -307,10 +300,9 @@ class Peticion
         $this->metodo = $metodo;
 
         // Preparamos Esquema
+        $this->esquema = 'http';
         if (isset($url_procesada['scheme'])) {
             $this->esquema = $url_procesada['scheme'];
-        } else {
-            $this->esquema = 'http';
         }
 
         // Preparamos Host
@@ -319,10 +311,9 @@ class Peticion
         }
 
         // Preparamos Puerto
+        $this->puerto = 80;
         if (isset($url_procesada['port'])) {
             $this->puerto = $url_procesada['port'];
-        } else {
-            $this->puerto = 80;
         }
 
         // Preparamos Camino
@@ -377,7 +368,7 @@ class Peticion
      */
     public function definirCabecera($nombre, $valor)
     {
-        $cabeceras[$nombre] = $valor;
+        $this->cabeceras[$nombre] = $valor;
     }
 
     /**
@@ -412,9 +403,9 @@ class Peticion
     {
         if (isset($this->cabeceras['X-Requested-With']) && strtolower($this->cabeceras['X-Requested-With']) == 'xmlhttprequest') {
             return true;
-        } else {
-            return false;
         }
+
+        return false;
     }
 
     /**
@@ -426,9 +417,9 @@ class Peticion
     {
         if ($this->esquema == 'https' || $this->puerto == 443) {
             return true;
-        } else {
-            return false;
         }
+
+        return false;
     }
 
     /**
