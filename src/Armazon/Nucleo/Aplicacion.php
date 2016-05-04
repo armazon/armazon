@@ -2,14 +2,14 @@
 
 namespace Armazon\Nucleo;
 
-use Armazon\Mvc\Controlador;
 use Closure;
+use Armazon\Mvc\Controlador;
+use Armazon\Mvc\Vista;
 use Armazon\Bd\Relacional;
 use Armazon\Http\Enrutador;
 use Armazon\Http\Peticion;
 use Armazon\Http\Respuesta;
 use Armazon\Http\Ruta;
-use Symfony\Component\Yaml\Exception\RuntimeException;
 use Whoops\Handler\PrettyPageHandler;
 use Whoops\Run;
 
@@ -18,6 +18,8 @@ use Whoops\Run;
  */
 class Aplicacion
 {
+    use EventosTrait;
+
     /** @var self */
     protected static $instancia;
     /** @var Peticion */
@@ -28,18 +30,17 @@ class Aplicacion
     protected $whoops;
 
     public $id = 'armazon';
-    protected $componentes = array();
-    protected $eventos = array();
+    protected $componentes = [];
     protected $bdRelacional = 'bd';
     protected $ambiente = 'desarrollo';
     protected $archivoRutas;
     protected $uriBase = '/';
     protected $dirApp;
-    protected $dirAutoCargado = array();
+    protected $dirAutoCargado = [];
     protected $zonaTiempo;
     protected $codificacion;
     protected $preparada = false;
-    protected $erroresHttp = array(
+    protected $erroresHttp = [
         100 => 'Continúa',
         101 => 'Cambiando protocolo',
         200 => 'OK',
@@ -81,7 +82,7 @@ class Aplicacion
         503 => 'Servicio No Disponible',
         504 => 'Tiempo de Espera en la Pasarela Agotado',
         505 => 'Versión de HTTP No Soportada',
-    );
+    ];
 
     // METODOS PARA EL MANEJO DE LA INSTANCIA --------------------------------------------------------------------------
 
@@ -414,11 +415,12 @@ class Aplicacion
      * @param string $nombre
      * @param Peticion $peticion
      * @param Respuesta $respuesta
+     * @param Ruta $ruta
      *
      * @return Controlador
      * @throws \RuntimeException
      */
-    private function obtenerControlador($nombre, Peticion $peticion, Respuesta $respuesta)
+    private function obtenerControlador($nombre, Peticion $peticion, Respuesta $respuesta, Ruta $ruta)
     {
         // Preparamos nombre de clase del controlador
         $clase = $nombre . 'Controlador';
@@ -444,7 +446,7 @@ class Aplicacion
         }
 
         // Devolvemos controlador
-        return new $clase($this, $peticion, $respuesta);
+        return new $clase($this, $peticion, $respuesta, $ruta);
     }
 
     /**
@@ -477,6 +479,7 @@ class Aplicacion
         // Si la ruta representa una vista
         if ($ruta->tipo == 'vista') {
             $vista = $this->obtenerComponente('vista');
+            //TODO: Implementar funcionalidad para no depender de componente vista
             $vista->definirPlantilla(null);
             $vista->estado_http = $estadoHttp;
 
@@ -494,13 +497,14 @@ class Aplicacion
 
         // Si la ruta representa un llamado de acción a un controlador
         if ($ruta->tipo == 'llamado') {
-            $respuesta->definirEstadoHttp($ruta->estadoHttp);
-
             // Procesamos la acción de la ruta
             list($controladorNombre, $accionNombre) = explode('@', $ruta->accion);
 
-            // Obtenemos el controlador
-            $controlador = $this->obtenerControlador($controladorNombre, $peticion, $respuesta);
+            // Construimos el controlador
+            $controlador = $this->obtenerControlador($controladorNombre, $peticion, $respuesta, $ruta);
+
+            // Inicializamos el controlador previamente construido
+            $controlador->inicializar();
 
             // Traspasamos parametros de la ruta al controlador
             if (isset($ruta->parametros) && count($ruta->parametros)) {
@@ -510,8 +514,13 @@ class Aplicacion
             // Registramos componente vista al controlador
             $controlador->vista = $this->obtenerComponente('vista', true);
 
-            // Ejecutamos evento de inicio en el controlador
-            if ($temp = $controlador->alIniciar($controladorNombre, $accionNombre)) {
+            // Validamos presencia de accion
+            if (!method_exists($controlador, $accionNombre)) {
+                throw new \RuntimeException("La acción '{$accionNombre}' no existe dentro del controlador.");
+            }
+
+            // Ejecutamos evento para antes de ejecutar acción
+            if ($temp = $controlador->ejecutarEvento('iniciar_accion', [$controladorNombre, $accionNombre])) {
                 if ($temp instanceof Respuesta) {
                     return $temp;
                 } elseif ($temp instanceof Ruta) {
@@ -520,23 +529,28 @@ class Aplicacion
             }
             unset($temp);
 
-            // Validamos presencia de accion
-            if (!method_exists($controlador, $accionNombre)) {
-                throw new \RuntimeException("La acción '{$accionNombre}' no existe dentro del controlador.");
-            }
-
             // Ejecutamos accion
             $resultado = $controlador->{$accionNombre}();
 
-            // Convertimos resultado en respuesta y devolvemos
-            if (empty($resultado) && $controlador->vista->fueRenderizado()) {
-                $contenido = $controlador->vista->obtenerContenido();
-                $respuesta->definirContenido($contenido);
-                return $respuesta;
-            } elseif ($resultado instanceof Respuesta) {
-                return $resultado;
-            } elseif ($resultado instanceof Ruta) {
-                return $this->despacharRuta($peticion, $resultado);
+            // Ejecutamos evento para despues de ejecutar acción
+            if ($temp = $controlador->ejecutarEvento('terminar_accion', [$resultado])) {
+                if ($temp instanceof Respuesta) {
+                    return $temp;
+                } elseif ($temp instanceof Ruta) {
+                    return $this->despacharRuta($peticion, $temp);
+                }
+            }
+            unset($temp);
+
+            // Procesamos resultado de acción y devolvemos respuesta
+            if ($resultado) {
+                if ($resultado instanceof Respuesta) {
+                    return $resultado;
+                } elseif ($resultado instanceof Vista && $resultado->fueRenderizado()) {
+                    $respuesta->definirContenido($resultado->obtenerContenido());
+                } elseif ($resultado instanceof Ruta) {
+                    return $this->despacharRuta($peticion, $resultado);
+                }
             }
         }
 
@@ -553,7 +567,7 @@ class Aplicacion
      *
      * @return Respuesta
      */
-    public function generarRespuestaError(Peticion $peticion, $estadoHttp = 500, \Throwable $error = null)
+    public function generarRespuestaError(Peticion $peticion, $estadoHttp = 500, $error = null)
     {
         // Preparamos respuesta a arrojar
         $respuesta = new Respuesta();
@@ -607,8 +621,8 @@ class Aplicacion
             // Despachamos ruta encontrada
             $respuesta = $this->despacharRuta($peticion, $ruta);
 
-            // Ejecutamos evento alProcesarPeticion
-            $this->ejecutarEvento('alProcesarPeticion', array($respuesta));
+            // Ejecutamos evento al terminar de procesar petición
+            $this->ejecutarEvento('terminar_peticion', [$respuesta]);
 
             return $respuesta;
 
@@ -617,25 +631,4 @@ class Aplicacion
         }
     }
 
-    public function registrarEvento($nombre, callable $definicion, $encadenar = false)
-    {
-        if (!$encadenar || !isset($this->eventos[$nombre])) {
-            $this->eventos[$nombre] = array();
-        }
-
-        $this->eventos[$nombre][] = $definicion;
-    }
-
-    public function ejecutarEvento($nombre, array $argumentos = array(), $eliminarAlEjecutar = false)
-    {
-        if (isset($this->eventos[$nombre])) {
-            foreach ($this->eventos[$nombre] as $definicion) {
-                call_user_func_array($definicion, $argumentos);
-            }
-
-            if ($eliminarAlEjecutar) {
-                unset($this->eventos[$nombre]);
-            }
-        }
-    }
 }
