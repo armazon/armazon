@@ -22,8 +22,6 @@ class Aplicacion
 
     /** @var self */
     protected static $instancia;
-    /** @var Peticion */
-    protected $peticion;
     /** @var Enrutador */
     protected $enrutador;
     /** @var Run */
@@ -506,11 +504,6 @@ class Aplicacion
             // Inicializamos el controlador previamente construido
             $controlador->inicializar();
 
-            // Traspasamos parametros de la ruta al controlador
-            if (isset($ruta->parametros) && count($ruta->parametros)) {
-                $controlador->parametros = $ruta->parametros;
-            }
-
             // Registramos componente vista al controlador
             $controlador->vista = $this->obtenerComponente('vista', true);
 
@@ -530,7 +523,7 @@ class Aplicacion
             unset($temp);
 
             // Ejecutamos accion
-            $resultado = $controlador->{$accionNombre}();
+            $resultado = call_user_func_array([$controlador, $accionNombre], (array) $ruta->parametros);
 
             // Ejecutamos evento para despues de ejecutar acción
             if ($temp = $controlador->ejecutarEvento('terminar_accion', [$resultado])) {
