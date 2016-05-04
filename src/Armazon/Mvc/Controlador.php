@@ -25,7 +25,6 @@ abstract class Controlador
     public $ruta;
     /** @var Vista */
     public $vista;
-    public $parametros;
 
     public function __construct(Aplicacion $app, Peticion $peticion, Respuesta $respuesta, Ruta $ruta)
     {
