@@ -23,8 +23,6 @@ abstract class Controlador
     protected $respuesta;
     /** @var Ruta */
     public $ruta;
-    /** @var Vista */
-    public $vista;
 
     public function __construct(Aplicacion $app, Peticion $peticion, Respuesta $respuesta, Ruta $ruta)
     {

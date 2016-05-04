@@ -501,16 +501,13 @@ class Aplicacion
             // Construimos el controlador
             $controlador = $this->obtenerControlador($controladorNombre, $peticion, $respuesta, $ruta);
 
-            // Inicializamos el controlador previamente construido
-            $controlador->inicializar();
-
-            // Registramos componente vista al controlador
-            $controlador->vista = $this->obtenerComponente('vista', true);
-
             // Validamos presencia de accion
             if (!method_exists($controlador, $accionNombre)) {
                 throw new \RuntimeException("La acción '{$accionNombre}' no existe dentro del controlador.");
             }
+
+            // Inicializamos el controlador previamente construido
+            $controlador->inicializar();
 
             // Ejecutamos evento para antes de ejecutar acción
             if ($temp = $controlador->ejecutarEvento('iniciar_accion', [$controladorNombre, $accionNombre])) {
