@@ -28,7 +28,7 @@ Para ejecutar tu nueva aplicación puedes usar PHP-FPM (usar publico/arranque.ph
 
 Para usar el servidor de aplicación de ARMAZÓN deberás cumplir con los siguientes requerimientos:
 
-- PHP 7.0 o mayor.
+- PHP 5.5 o mayor.
 - Extensión Swoole 1.8 o mayor.
 - Extensión POSIX.
 - Extensión PDO (solo en caso de usar modelos relacionales).
