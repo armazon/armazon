@@ -26,25 +26,14 @@ class Respuesta
         'pdf' => 'application/pdf',
     ];
     protected $cabeceras = [
-        'X-Powered-By' => 'Armazon',
-        'Content-Type' => 'text/html',
+        'X-Powered-By' => ['Armazon'],
+        'Content-Type' => ['text/html'],
     ];
     protected $codificacion = 'utf-8';
     protected $estadoHttp = 200;
     protected $tipoContenido = 'html';
     protected $contenido;
     protected $enviado = false;
-
-    /**
-     * Agrega una cabecera a la respuesta.
-     *
-     * @param string $nombre
-     * @param string $valor
-     */
-    public function definirCabecera($nombre, $valor)
-    {
-        $this->cabeceras[$nombre] = $valor;
-    }
 
     /**
      * Devuelve las cabeceras de la respuesta.
@@ -57,10 +46,70 @@ class Respuesta
     }
 
     /**
+     * Define o reemplaza una cabecera a la respuesta.
+     *
+     * @param string $nombre
+     * @param string $valor
+     */
+    public function definirCabecera($nombre, $valor)
+    {
+        $this->cabeceras[$nombre] = [$valor];
+    }
+
+    /**
+     * Agrega una cabecera a la respuesta.
+     *
+     * @param string $nombre
+     * @param string $valor
+     */
+    public function agregarCabecera($nombre, $valor)
+    {
+        if (isset($this->cabeceras[$nombre])) {
+            $this->cabeceras[$nombre][] = $valor;
+        } else {
+            $this->cabeceras[$nombre] = [$valor];
+        }
+
+    }
+
+    /**
+     * Agrega una galleta a la respuesta.
+     *
+     * @param $nombre
+     * @param $valor
+     * @param int $expira
+     * @param string $camino
+     * @param string $dominio
+     * @param bool $seguro
+     * @param bool $soloHttp
+     */
+    public function agregarGalleta($nombre, $valor, $expira = 0, $camino = '/', $dominio = null, $seguro = false, $soloHttp = false)
+    {
+        $extras = '';
+        if ($expira) {
+            $extras .= ';Expires=' . gmdate('D, d M Y H:i:s \G\M\T', $expira);
+        }
+        if ($camino) {
+            $extras .= ';Path=' . $camino;
+        }
+        if ($dominio) {
+            $extras .= ';Domain=' . $dominio;
+        }
+        if ($seguro) {
+            $extras .= ';Secure';
+        }
+        if ($soloHttp) {
+            $extras .= ';HttpOnly';
+        }
+
+        $this->agregarCabecera('Set-Cookie', "{$nombre}={$valor}{$extras}");
+    }
+
+    /**
      * @param string $codificacion
      */
     public function definirCodificacion($codificacion) {
-        $this->$codificacion = $codificacion;
+        $this->codificacion = $codificacion;
     }
 
     /**
@@ -108,9 +157,9 @@ class Respuesta
     {
         $this->tipoContenido = $tipo;
         if (isset($this->mime[$tipo])) {
-            $this->cabeceras['Content-Type'] = $this->mime[$tipo];
+            $this->definirCabecera('Content-Type', $this->mime[$tipo]);
         } else {
-            $this->cabeceras['Content-Type'] = $tipo;
+            $this->definirCabecera('Content-Type', $tipo);
         }
     }
 
@@ -135,8 +184,11 @@ class Respuesta
 
         http_response_code($this->estadoHttp);
 
-        foreach ($this->cabeceras as $cabecera => $valor) {
-            header($cabecera . ': ' . $valor);
+        // Enviamos cabeceras
+        foreach ($this->cabeceras as $cabecera => $valores) {
+            foreach ($valores as $valor) {
+                header($cabecera . ': ' . $valor, false);
+            }
         }
 
         if (!empty($this->contenido)) {
