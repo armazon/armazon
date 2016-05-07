@@ -6,39 +6,63 @@ trait EventosTrait
 {
     private $eventos = [];
 
+    /**
+     * Obtiene el arreglo de eventos enlazados en esta clase.
+     *
+     * @return array
+     */
     public function obtenerEventos()
     {
         return $this->eventos;
     }
 
-    public function registrarEvento($nombre, callable $definicion, $encadenar = false)
+    /**
+     * Enlaza un evento a una definición de llamado.
+     *
+     * @param $nombre
+     * @param callable $definicion
+     * @param bool $encadenar
+     */
+    public function enlazarEvento($nombre, callable $definicion, $encadenar = false)
     {
         if (!$encadenar || !isset($this->eventos[$nombre])) {
-            $this->eventos[$nombre] = array();
+            $this->eventos[$nombre] = [];
         }
 
         $this->eventos[$nombre][] = $definicion;
     }
 
-    public function anularEvento($nombre)
+    /**
+     * Desenlaza un evento.
+     *
+     * @param $nombre
+     */
+    public function desenlazarEvento($nombre)
     {
         unset($this->eventos[$nombre]);
     }
 
-    public function ejecutarEvento($nombre, array $argumentos = [])
+    /**
+     * Dispara un evento pasando argumentos.
+     *
+     * @param $nombre
+     * @param array $argumentos
+     * @return mixed
+     */
+    public function accionarEvento($nombre, array $argumentos = [])
     {
-        $resultado = [];
-
         if (isset($this->eventos[$nombre])) {
-            foreach ($this->eventos[$nombre] as $definicion) {
-                $resultado[] = call_user_func_array($definicion, $argumentos);
+            if (count($this->eventos[$nombre]) > 1) {
+                $resultado = [];
+                foreach ($this->eventos[$nombre] as $definicion) {
+                    $resultado[] = call_user_func_array($definicion, $argumentos);
+                }
+                return $resultado;
             }
+
+            return call_user_func_array($this->eventos[$nombre][0], $argumentos);
         }
 
-        if (count($resultado) == 1) {
-            return $resultado[0];
-        }
-
-        return $resultado;
+        return null;
     }
 }

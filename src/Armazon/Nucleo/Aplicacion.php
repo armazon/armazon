@@ -510,7 +510,7 @@ class Aplicacion
             $controlador->inicializar();
 
             // Ejecutamos evento para antes de ejecutar acción
-            if ($temp = $controlador->ejecutarEvento('iniciar_accion', [$controladorNombre, $accionNombre])) {
+            if ($temp = $controlador->accionarEvento('iniciar_accion', [$controladorNombre, $accionNombre])) {
                 if ($temp instanceof Respuesta) {
                     return $temp;
                 } elseif ($temp instanceof Ruta) {
@@ -523,7 +523,7 @@ class Aplicacion
             $resultado = call_user_func_array([$controlador, $accionNombre], (array) $ruta->parametros);
 
             // Ejecutamos evento para despues de ejecutar acción
-            if ($temp = $controlador->ejecutarEvento('terminar_accion', [$resultado])) {
+            if ($temp = $controlador->accionarEvento('terminar_accion', [$resultado])) {
                 if ($temp instanceof Respuesta) {
                     return $temp;
                 } elseif ($temp instanceof Ruta) {
@@ -612,7 +612,7 @@ class Aplicacion
             $respuesta = $this->despacharRuta($peticion, $ruta);
 
             // Ejecutamos evento al terminar de procesar petición
-            $this->ejecutarEvento('terminar_peticion', [$respuesta]);
+            $this->accionarEvento('terminar_peticion', [$respuesta]);
 
             return $respuesta;
 
