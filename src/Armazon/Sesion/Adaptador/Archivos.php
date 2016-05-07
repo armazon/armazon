@@ -6,7 +6,8 @@ use Armazon\Sesion\AdaptadorInterface;
 
 class Archivos implements AdaptadorInterface
 {
-    public $dir;
+    private $dir;
+    private $nombre;
 
     /**
      * @inheritDoc
@@ -14,7 +15,7 @@ class Archivos implements AdaptadorInterface
     public function __construct(array $conf)
     {
         if (!isset($conf['dir'])) {
-            throw new \Exception("El adaptador de sesión 'Archivos' necesita la configuración de ruta.");
+            throw new \Exception("El adaptador de sesión 'Archivos' necesita la configuración 'dir'.");
         }
 
         $this->dir = $conf['dir'];
@@ -34,7 +35,7 @@ class Archivos implements AdaptadorInterface
      */
     public function destruir($id)
     {
-        $archivo = "{$this->dir}/sess_{$id}";
+        $archivo = $this->dir . DIRECTORY_SEPARATOR . $this->nombre . '_' . $id;
 
         if (file_exists($archivo)) {
             unlink($archivo);
@@ -60,8 +61,10 @@ class Archivos implements AdaptadorInterface
     /**
      * @inheritDoc
      */
-    public function inicializar()
+    public function abrir($nombre)
     {
+        $this->nombre = $nombre;
+
         if (!is_dir($this->dir)) {
             if (!@mkdir($this->dir, 0777)) {
                 return false;
@@ -82,13 +85,13 @@ class Archivos implements AdaptadorInterface
      */
     public function leer($id)
     {
-        $archivo = $this->dir . '/sess_' . $id;
+        $archivo = $this->dir . DIRECTORY_SEPARATOR . $this->nombre . '_' . $id;
 
         if (file_exists($archivo)) {
             return unserialize(file_get_contents($archivo));
         }
 
-        return array();
+        return [];
     }
 
     /**
@@ -96,7 +99,9 @@ class Archivos implements AdaptadorInterface
      */
     public function escribir($id, array $datos)
     {
-        return file_put_contents($this->dir . '/sess_' . $id, serialize($datos)) !== false;
+        $archivo = $this->dir . DIRECTORY_SEPARATOR . $this->nombre . '_' . $id;
+
+        return file_put_contents($archivo, serialize($datos)) !== false;
     }
 
 }
