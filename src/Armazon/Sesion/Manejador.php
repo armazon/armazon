@@ -9,17 +9,13 @@ class Manejador
 {
     /** @var AdaptadorInterface */
     private $adaptador;
-    private $conf = array(
-        'auto_iniciar' => true,
-        'validar_ttl' => false, // segundos
-        'validar_ip' => false,
-        'validar_agente' => false,
-        'auto_regenerar' => false,
-    );
+    private $conf = [
+        'auto_iniciar' => true
+    ];
     private $iniciado = false;
     private $datos;
     private $id;
-    private $nombre = 'ssid';
+    private $nombre = 'armazon_sess';
 
 
     public function __construct(AdaptadorInterface $adaptador, array $conf = null)
@@ -45,7 +41,7 @@ class Manejador
         } elseif (function_exists('openssl_random_pseudo_bytes')) {
             $semilla = openssl_random_pseudo_bytes(32);
         } else {
-            $semilla = uniqid('', true);
+            $semilla = uniqid('armazon', true);
         }
 
         return hash('sha256', $semilla);
@@ -62,54 +58,58 @@ class Manejador
             return true;
         }
 
-        if (!$this->adaptador->inicializar()) {
-            throw new \RuntimeException('Hubo un error al inicializar el adaptador de sesión.');
+        if (!$this->adaptador->abrir($this->nombre)) {
+            throw new \RuntimeException('Hubo un error inicializando el adaptador de sesión.');
         }
 
         if (!$this->id) {
             $this->id = $this->generarId();
         }
 
-        $this->adaptador->inicializar();
-        
         $this->datos = $this->adaptador->leer($this->id);
 
-        // Validamos tiempo de espera en caso solicitado
-        if ($this->conf['validar_ttl']) {
-            if (isset($this->datos['__ttl']) && $this->datos['__ttl'] < time()) {
-                throw new \RuntimeException('La sesión ha expirado.');
-            }
-            $this->datos['__ttl'] = time() + $this->conf['validar_ttl'];
-        }
-
-        $this->iniciado = true;
-
-        if ($this->conf['auto_regenerar']) {
-            $this->regenerarId();
-        }
-
-        return true;
+        return $this->iniciado = true;
     }
 
     /**
-     * Termina la sesion actual y guarda los datos en ella.
+     * Guarda los datos de la sesión actual para luego cerrarla.
      */
-    public function cerrar()
+    public function escribirCerrar()
     {
-        if ($this->iniciado) {
-            $this->adaptador->escribir($this->id, $this->datos);
-            $this->adaptador->cerrar();
-            $this->iniciado = false;
+        if (!$this->iniciado) {
+            throw new \RuntimeException('La sesión no fue iniciada previamente.');
         }
+
+        $this->adaptador->escribir($this->id, $this->datos);
+        $this->adaptador->cerrar();
+        $this->iniciado = false;
     }
 
     /**
-     * Libera y destruye totalmente la sesion y sus variables.
+     * Libera y destruye la sesion actual y su contenido.
      */
     public function destruir()
     {
-        if ($this->iniciado) {
-            $this->adaptador->destruir($this->id);
+        if (!$this->iniciado) {
+            throw new \RuntimeException('La sesión no fue iniciada previamente.');
+        }
+
+        $this->adaptador->destruir($this->id);
+        $this->iniciado = false;
+    }
+
+    /**
+     * Verifica el estatus de la sesión, si la sesión está cerrada arroja una excepción
+     * o inicia la sesión según la configuración de inicio automático.
+     */
+    private function requerirInicio()
+    {
+        if (!$this->iniciado) {
+            if ($this->conf['auto_iniciar']) {
+                $this->iniciar();
+            } else {
+                throw new \RuntimeException('La sesión no fue iniciada previamente.');
+            }
         }
     }
 
@@ -121,13 +121,7 @@ class Manejador
      */
     public function anunciar($mensaje, $tipo = 'error')
     {
-        if (!$this->iniciado) {
-            if ($this->conf['auto_iniciar']) {
-                $this->iniciar();
-            } else {
-                throw new \RuntimeException('La sesión no fue iniciada.');
-            }
-        }
+        $this->requerirInicio();
 
         $this->datos['__anuncio']['mensaje'] = $mensaje;
         $this->datos['__anuncio']['tipo'] = $tipo;
@@ -140,13 +134,7 @@ class Manejador
      */
     public function obtenerAnuncio()
     {
-        if (!$this->iniciado) {
-            if ($this->conf['auto_iniciar']) {
-                $this->iniciar();
-            } else {
-                throw new \RuntimeException('La sesión no fue iniciada.');
-            }
-        }
+        $this->requerirInicio();
 
         if (isset($this->datos['__anuncio']['mensaje'])) {
             return $this->eliminar('__anuncio');
@@ -166,7 +154,7 @@ class Manejador
     }
 
     /**
-     * Obtiene una variable de sesion.
+     * Obtiene una variable de la sesion.
      *
      * @param string $llave
      * @param mixed $valorAlterno
@@ -174,38 +162,26 @@ class Manejador
      */
     public function obtener($llave, $valorAlterno = null)
     {
-        if (!$this->iniciado) {
-            if ($this->conf['auto_iniciar']) {
-                $this->iniciar();
-            } else {
-                throw new \RuntimeException('La sesión no fue iniciada.');
-            }
-        }
+        $this->requerirInicio();
 
         return isset($this->datos[$llave]) ? $this->datos[$llave] : $valorAlterno;
     }
 
     /**
-     * Guarda una variable de session.
+     * Guarda una variable en la session.
      *
      * @param string $llave Nombre
      * @param mixed $valor Valor
      */
     public function guardar($llave, $valor)
     {
-        if (!$this->iniciado) {
-            if ($this->conf['auto_iniciar']) {
-                $this->iniciar();
-            } else {
-                throw new \RuntimeException('La sesión no fue iniciada.');
-            }
-        }
+        $this->requerirInicio();
 
         $this->datos[$llave] = $valor;
     }
 
     /**
-     * Elimina una variable de sesion.
+     * Elimina una variable en la sesion.
      *
      * @param string $llave
      *
@@ -213,13 +189,7 @@ class Manejador
      */
     public function eliminar($llave)
     {
-        if (!$this->iniciado) {
-            if ($this->conf['auto_iniciar']) {
-                $this->iniciar();
-            } else {
-                throw new \RuntimeException('La sesión no fue iniciada.');
-            }
-        }
+        $this->requerirInicio();
 
         if (isset($this->datos[$llave])) {
             $valor = $this->datos[$llave];
@@ -235,13 +205,7 @@ class Manejador
      */
     public function limpiar()
     {
-        if (!$this->iniciado) {
-            if ($this->conf['auto_iniciar']) {
-                $this->iniciar();
-            } else {
-                throw new \RuntimeException('La sesión no fue iniciada.');
-            }
-        }
+        $this->requerirInicio();
 
         $this->datos = array();
     }
@@ -255,13 +219,7 @@ class Manejador
      */
     public function existe($llave)
     {
-        if (!$this->iniciado) {
-            if ($this->conf['auto_iniciar']) {
-                $this->iniciar();
-            } else {
-                throw new \RuntimeException('La sesión no fue iniciada.');
-            }
-        }
+        $this->requerirInicio();
 
         return isset($this->datos[$llave]);
     }
@@ -273,13 +231,7 @@ class Manejador
      */
     public function regenerarId()
     {
-        if (!$this->iniciado) {
-            if ($this->conf['auto_iniciar']) {
-                $this->iniciar();
-            } else {
-                throw new \RuntimeException('La sesión no fue iniciada.');
-            }
-        }
+        $this->requerirInicio();
 
         $this->adaptador->destruir($this->id);
         $this->id = $this->generarId();
@@ -289,7 +241,7 @@ class Manejador
     }
 
     /**
-     * Define el identificador de sesión
+     * Define el identificador de sesión.
      *
      * @param string $id
      */
@@ -299,20 +251,12 @@ class Manejador
     }
 
     /**
-     * Obtiene el identificador de sesión actual.
+     * Obtiene el identificador de sesión.
      *
      * @return string
      */
     public function obtenerId()
     {
-        if (!$this->iniciado) {
-            if ($this->conf['auto_iniciar']) {
-                $this->iniciar();
-            } else {
-                throw new \RuntimeException('La sesión no fue iniciada.');
-            }
-        }
-
         return $this->id;
     }
 
@@ -336,7 +280,11 @@ class Manejador
         return $this->nombre;
     }
 
-
+    /**
+     * Devuelve el estatus de la sesión.
+     *
+     * @return bool
+     */
     public function estaIniciada()
     {
         return $this->iniciado;
