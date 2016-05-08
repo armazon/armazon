@@ -554,6 +554,8 @@ class Aplicacion
      */
     public function generarRespuestaError(Peticion $peticion, $estadoHttp = 500, $error = null)
     {
+        ob_end_clean();
+
         // Preparamos respuesta a arrojar
         $respuesta = new Respuesta();
         if (isset($this->erroresHttp[$estadoHttp])) {
@@ -595,6 +597,10 @@ class Aplicacion
     public function procesarPetición(Peticion $peticion)
     {
         try {
+
+            // Iniciamos silenciador de salidas
+            ob_start();
+
             // Verificamos si la aplicación está preparada
             if (!$this->preparada) {
                 return $this->generarRespuestaError($peticion, 503);
@@ -610,6 +616,9 @@ class Aplicacion
             if ($this->existeEvento('terminar_peticion')) {
                 $this->accionarEvento('terminar_peticion', $respuesta);
             }
+
+            // Cerramos silenciador de salidas
+            ob_end_clean();
 
             return $respuesta;
 
