@@ -43,15 +43,18 @@ trait EventosTrait
     }
 
     /**
-     * Dispara un evento pasando argumentos.
+     * Dispara un evento pasando argumentos de forma opcional.
      *
      * @param $nombre
-     * @param array $argumentos
+     * 
      * @return mixed
      */
-    public function accionarEvento($nombre, array $argumentos = [])
+    public function accionarEvento($nombre)
     {
         if (isset($this->eventos[$nombre])) {
+            $argumentos = func_get_args();
+            array_shift($argumentos);
+
             if (count($this->eventos[$nombre]) > 1) {
                 $resultado = [];
                 foreach ($this->eventos[$nombre] as $definicion) {
@@ -64,5 +67,19 @@ trait EventosTrait
         }
 
         return null;
+    }
+
+    /**
+     * @param $nombre
+     *
+     * @return bool
+     */
+    public function existeEvento($nombre)
+    {
+        if (isset($this->eventos[$nombre])) {
+            return true;
+        }
+
+        return false;
     }
 }
