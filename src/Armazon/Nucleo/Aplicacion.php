@@ -459,28 +459,24 @@ class Aplicacion
      */
     private function despacharRuta(Peticion $peticion, Ruta $ruta, $estadoHttp = null)
     {
-        // Preparamos respuesta a devolver
+        // Inicializamos respuesta a devolver
         $respuesta = new Respuesta();
 
-        if (isset($estadoHttp)) {
-            $respuesta->definirEstadoHttp($estadoHttp);
-        } else {
-            $respuesta->definirEstadoHttp($ruta->estadoHttp);
+        // Preparamos estado http
+        if (!isset($estadoHttp)) {
             $estadoHttp = $ruta->estadoHttp;
         }
+        $respuesta->definirEstadoHttp($estadoHttp);
 
         // Si la ruta representa una redirección
         if ($ruta->tipo == 'redir') {
-            $respuesta->redirigir($ruta->accion, $ruta->estadoHttp);
+            $respuesta->redirigir($ruta->accion, $estadoHttp);
         }
 
         // Si la ruta representa una vista
         if ($ruta->tipo == 'vista') {
-            $vista = $this->obtenerComponente('vista');
-            //TODO: Implementar funcionalidad para no depender de componente vista
-            $vista->definirPlantilla(null);
+            $vista = new Vista($this);
             $vista->estado_http = $estadoHttp;
-
             $respuesta->definirContenido($vista->renderizar($ruta->accion));
         }
 
@@ -509,35 +505,34 @@ class Aplicacion
             // Inicializamos el controlador previamente construido
             $controlador->inicializar();
 
-            // Ejecutamos evento para antes de ejecutar acción
-            if ($temp = $controlador->accionarEvento('iniciar_accion', [$controladorNombre, $accionNombre])) {
-                if ($temp instanceof Respuesta) {
-                    return $temp;
-                } elseif ($temp instanceof Ruta) {
-                    return $this->despacharRuta($peticion, $temp);
+            // Accionamos evento al iniciar la ejecución de la acción
+            if ($this->existeEvento('iniciar_accion')) {
+                if ($temp = $controlador->accionarEvento('iniciar_accion', $controladorNombre, $accionNombre)) {
+                    if ($temp instanceof Respuesta) {
+                        return $temp;
+                    } elseif ($temp instanceof Ruta) {
+                        return $this->despacharRuta($peticion, $temp);
+                    }
                 }
+                unset($temp);
             }
-            unset($temp);
 
             // Ejecutamos accion
             $resultado = call_user_func_array([$controlador, $accionNombre], (array) $ruta->parametros);
 
-            // Ejecutamos evento para despues de ejecutar acción
-            if ($temp = $controlador->accionarEvento('terminar_accion', [$resultado])) {
-                if ($temp instanceof Respuesta) {
-                    return $temp;
-                } elseif ($temp instanceof Ruta) {
-                    return $this->despacharRuta($peticion, $temp);
+            // Accionamos evento al terminar la ejecución de la acción
+            if ($this->existeEvento('terminar_accion')) {
+                if ($temp = $controlador->accionarEvento('terminar_accion', $resultado)) {
+                    $resultado = $temp;
                 }
             }
-            unset($temp);
 
             // Procesamos resultado de acción y devolvemos respuesta
             if ($resultado) {
                 if ($resultado instanceof Respuesta) {
                     return $resultado;
-                } elseif ($resultado instanceof Vista && $resultado->fueRenderizado()) {
-                    $respuesta->definirContenido($resultado->obtenerContenido());
+                } elseif (is_string($resultado)) {
+                    $respuesta->definirContenido($resultado);
                 } elseif ($resultado instanceof Ruta) {
                     return $this->despacharRuta($peticion, $resultado);
                 }
@@ -611,12 +606,16 @@ class Aplicacion
             // Despachamos ruta encontrada
             $respuesta = $this->despacharRuta($peticion, $ruta);
 
-            // Ejecutamos evento al terminar de procesar petición
-            $this->accionarEvento('terminar_peticion', [$respuesta]);
+            // Accionamos evento al terminar de procesar petición
+            if ($this->existeEvento('terminar_peticion')) {
+                $this->accionarEvento('terminar_peticion', $respuesta);
+            }
 
             return $respuesta;
 
         } catch (\Exception $e) {
+            return $this->generarRespuestaError($peticion, 500, $e);
+        } catch (\Throwable $e) {
             return $this->generarRespuestaError($peticion, 500, $e);
         }
     }
