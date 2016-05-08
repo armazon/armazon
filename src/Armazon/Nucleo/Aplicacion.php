@@ -506,7 +506,7 @@ class Aplicacion
             $controlador->inicializar();
 
             // Accionamos evento al iniciar la ejecución de la acción
-            if ($this->existeEvento('iniciar_accion')) {
+            if ($controlador->existeEvento('iniciar_accion')) {
                 if ($temp = $controlador->accionarEvento('iniciar_accion', $controladorNombre, $accionNombre)) {
                     if ($temp instanceof Respuesta) {
                         return $temp;
@@ -521,7 +521,7 @@ class Aplicacion
             $resultado = call_user_func_array([$controlador, $accionNombre], (array) $ruta->parametros);
 
             // Accionamos evento al terminar la ejecución de la acción
-            if ($this->existeEvento('terminar_accion')) {
+            if ($controlador->existeEvento('terminar_accion')) {
                 if ($temp = $controlador->accionarEvento('terminar_accion', $resultado)) {
                     $resultado = $temp;
                 }
