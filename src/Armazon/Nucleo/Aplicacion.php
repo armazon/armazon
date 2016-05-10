@@ -567,7 +567,11 @@ class Aplicacion
         if ('desarrollo' == $this->ambiente) {
             $whoops = new Run();
             $whoops_pph = new PrettyPageHandler();
+            if (isset($error) && get_class($error) == 'Armazon\Nucleo\Excepcion' && $error->tieneDetalle()) {
+                $whoops_pph->addDataTable('Información de Excepción:', (array) $error->obtenerDetalle());
+            }
             $whoops_pph->addDataTable('Petición:', (array) $peticion);
+
             $whoops->pushHandler($whoops_pph);
             $whoops->writeToOutput(false);
             $whoops->allowQuit(false);

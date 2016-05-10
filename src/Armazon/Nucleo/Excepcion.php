@@ -21,7 +21,7 @@ class Excepcion extends \Exception
      */
     final public function tieneDetalle()
     {
-        return empty($this->detalle);
+        return !empty($this->detalle);
     }
 
     final public function obtenerDetalle()
