@@ -51,12 +51,12 @@ class Peticion
 
             foreach ($pares as $par) {
                 $temp = explode('=', $par, 2);
-                $nombre = rawurldecode($temp[0]);
+                $nombre = urldecode($temp[0]);
                 $temp2 = strpos($nombre, '[]');
                 if ($temp2 !== false) {
                     $nombre = substr($nombre, 0, $temp2);
                 }
-                $valor = (isset($temp[1])) ? rawurldecode($temp[1]) : '';
+                $valor = (isset($temp[1])) ? urldecode($temp[1]) : '';
 
                 // Si el nombre ya existe pegamos el valor como matriz
                 if (isset($resultado[$nombre])) {
