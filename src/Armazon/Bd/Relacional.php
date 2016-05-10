@@ -2,26 +2,17 @@
 
 namespace Armazon\Bd;
 
-use Armazon\Cache\AdaptadorInterface;
+use Armazon\Nucleo\Excepcion;
 
 /**
- * Envoltura de PDO para trabajar Bases de Datos Relacionales.
+ * Envoltura de PDO para trabajar con Bases de Datos Relacionales.
  */
 class Relacional
 {
     /** @var \PDO */
     private $pdo;
-
-    /** @var AdaptadorInterface */
-    private $componenteCache;
-
     private $sentencia;
-    private $cacheActivado = false;
-    private $cacheTtl;
-    private $cacheLlave;
-    private $cacheSobrescribir = false;
-    private $cacheResultado;
-    private $depurar = false;
+    private $arrojarExcepciones = false;
 
     /**
      * Constructor con configuraciones.
@@ -38,12 +29,12 @@ class Relacional
             throw new \InvalidArgumentException('Faltan configuraciones requeridas o algunas son inválidas.', 4006);
         }
 
-        if (!empty($config['depurar'])) {
-            $this->depurar = true;
+        if (!empty($config['arrojar_excepciones'])) {
+            $this->arrojarExcepciones = true;
         }
 
         // Convertimos DSN en arreglo según el caso
-        $config['dsn'] = (array) $config['dsn'];
+        $config['dsn'] = (array)$config['dsn'];
 
         // Aleatorizamos el orden de los DSN
         if (count($config['dsn']) > 1) {
@@ -65,10 +56,6 @@ class Relacional
         }
 
         if ($conectado) {
-            if ($this->depurar) {
-                $this->reportar('Abrimos conexion a la de base de datos relacional.');
-            }
-
             // Ejecutamos el comando inicial en caso necesario
             if (isset($config['comando_inicial'])) {
                 $this->pdo->exec($config['comando_inicial']);
@@ -87,36 +74,25 @@ class Relacional
     }
 
     /**
-     * Registra un mensaje visualmente detallado.
-     *
-     * @param string $mensaje
-     * @param mixed $detalle
-     */
-    private function reportar($mensaje, $detalle = null)
-    {
-        echo '<div style="font-weight: bold; font-family: verdana, arial, helvetica, sans-serif; '
-            . 'font-size: 13px; line-height: 16px; color: #000; background-color: #E6E6FF; border: solid 1px #99F; '
-            . 'padding: 4px 6px; margin: 10px; position: relative;">' . $mensaje . "<br>"
-            . '<pre style="font-weight: normal; font-family: monospace; font-size: 12px;">'
-            . print_r($detalle) . '</pre></div>';
-    }
-
-    /**
      * Selecciona la base de datos interna.
      *
      * @param string $basedatos
      *
-     * @return Relacional
+     * @return bool
      *
      * @throws \RuntimeException
      */
     public function seleccionarBd($basedatos)
     {
-        if ($this->pdo->exec('USE ' . $basedatos) !== false) {
-            return $this;
-        } else {
-            throw new \RuntimeException('No se pudo seleccionar base de datos.');
+        if ($this->pdo->exec('USE ' . $basedatos) === false) {
+            if ($this->arrojarExcepciones) {
+                throw new \RuntimeException('No se pudo seleccionar base de datos.');
+            }
+
+            return false;
         }
+
+        return true;
     }
 
     /**
@@ -130,222 +106,201 @@ class Relacional
     public function prepararValor($valor, $tipo = 'auto')
     {
         if (is_array($valor)) {
-
-            if (count($valor) == 0) return 'NULL';
+            if (empty($valor)) {
+                return 'NULL';
+            }
 
             foreach ($valor as $llave => $v) {
                 $valor[$llave] = $this->prepararValor($v, $tipo);
             }
 
             return $valor;
-
-        } else {
-
-            if ('auto' == $tipo) {
-                if (is_numeric($valor)) {
-                    $tipo = 'num';
-                } else {
-                    $tipo = 'txt';
-                }
-            }
-
-            // Retornamos valor boleano
-            if ($tipo == 'bol') {
-                return ($valor) ? '1' : '0';
-            }
-
-            // Retornamos valor nulo
-            if ($valor === null || $valor === false) {
-                return 'NULL';
-            }
-
-            // Retornamos valor textual
-            if ($tipo == 'txt') {
-                return $this->pdo->quote($valor);
-            }
-
-            // Retornamos valor numerico
-            if ($tipo == 'num') {
-                if ($valor === '') return 'NULL';
-
-                return strval(floatval($valor));
-            }
-
-            return $valor;
         }
+
+        if ('auto' == $tipo) {
+            if (is_numeric($valor)) {
+                $tipo = 'num';
+            } else {
+                $tipo = 'txt';
+            }
+        }
+
+        // Retornamos valor boleano
+        if ($tipo == 'bol') {
+            return ($valor) ? '1' : '0';
+        }
+
+        // Retornamos valor nulo
+        if ($valor === null || $valor === false) {
+            return 'NULL';
+        }
+
+        // Retornamos valor textual
+        if ($tipo == 'txt') {
+            return $this->pdo->quote($valor);
+        }
+
+        // Retornamos valor numerico
+        if ($tipo == 'num') {
+            if ($valor === '') return 'NULL';
+
+            return strval(floatval($valor));
+        }
+
+        return $valor;
+    }
+
+    /**
+     * Devuelve la información de error generada por la última sentencia ejecutada.
+     *
+     * @return array
+     */
+    public function obtenerError()
+    {
+        return $this->pdo->errorInfo();
     }
 
     /**
      * Consulta la sentencia interna y devuelve registros encontrados en el formato solicitado.
      *
-     * @param string $indizar_por Campo que desea como índice de registros
-     * @param string $agrupar_por Campo que desea como agrupación de registros
+     * @param string $indice Campo que desea como índice de registros
+     * @param string $agrupacion Campo que desea como agrupación de registros
      * @param string $clase Nombre de clase que servirá como resultado
-     * @param array $clase_args Argumentos para clase a servir
+     * @param array $claseArgs Argumentos para clase a servir
      *
      * @return array|bool
      *
-     * @throws \RuntimeException
+     * @throws Excepcion
      * @throws \InvalidArgumentException
      */
-    public function obtener($indizar_por = null, $agrupar_por = null, $clase = null, array $clase_args = [])
+    public function obtener($indice = null, $agrupacion = null, $clase = null, array $claseArgs = [])
     {
-        // Se obtiene resultados desde cache según el caso
-        if ($this->cacheActivado && $this->cacheResultado !== false) {
-            return $this->cacheResultado;
-        }
-
         // Validamos la sentencia a ejecutar
-        if (!isset($this->sentencia)) {
-            throw new \InvalidArgumentException('La sentencia a consultar se encuentra vacia.');
-        }
-
-        // Consultamos la sentencia para obtener datos
-        $ti = microtime(true);
-        $resultado = $this->pdo->query($this->sentencia);
-
-        if ($resultado === false) {
-
-            if ($this->depurar) {
-                throw new \RuntimeException('La sentencia [ ' . $this->sentencia . ' ] dió el siguiente error: '
-                    . $this->pdo->errorInfo() . '.');
+        if (empty($this->sentencia)) {
+            if ($this->arrojarExcepciones) {
+                throw new \InvalidArgumentException('La sentencia a consultar se encuentra vacia.');
             }
 
             return false;
+        }
 
-        } else {
+        // Consultamos la sentencia para obtener datos
+        $resultado = $this->pdo->query($this->sentencia);
 
-            $final = [];
+        if ($resultado === false) {
+            if ($this->arrojarExcepciones) {
+                throw new Excepcion('La sentencia consultada tuvo un error interno.', [
+                    'sentencia' => $this->sentencia,
+                    'error_codigo' => $this->pdo->errorCode(),
+                    'error_info' => $this->pdo->errorInfo(),
+                ]);
+            }
 
-            if (isset($clase) && $clase !== '') {
-                $fila = $resultado->fetchObject($clase, $clase_args);
+            return false;
+        }
 
-                if (isset($agrupar_por)) {
-                    if (!isset($fila->{$agrupar_por})) {
-                        throw new \InvalidArgumentException('El campo de agrupación no está presente en los resultados.');
-                    }
+        $final = [];
+        $conteo = 0;
+        $agrupacionX = '##';
 
-                    if (isset($indizar_por)) {
-                        if (!isset($fila->{$indizar_por})) {
-                            throw new \InvalidArgumentException('El campo de indización no está presente en los resultados.');
-                        }
+        if (!empty($clase)) {  // Obtenemos objetos
 
-                        while ($fila) {
-                            $final[$fila->{$agrupar_por}][$fila->{$indizar_por}] = $fila;
-                            $fila = $resultado->fetchObject($clase, $clase_args);
-                        }
-                    } else {
-                        while ($fila) {
-                            $final[$fila->{$agrupar_por}][] = $fila;
-                            $fila = $resultado->fetchObject($clase, $clase_args);
-                        }
-                    }
-                } else {
-                    if (isset($indizar_por)) {
-                        if (!isset($fila->{$indizar_por})) {
-                            throw new \InvalidArgumentException('El campo de indización no está presente en los resultados.');
-                        }
-
-                        while ($fila) {
-                            $final[$fila->{$indizar_por}] = $fila;
-                            $fila = $resultado->fetchObject($clase, $clase_args);
-                        }
-                    } else {
-                        while ($fila) {
-                            $final[] = $fila;
-                            $fila = $resultado->fetchObject($clase, $clase_args);
-                        }
-                    }
+            if ($registro = $resultado->fetchObject($clase, $claseArgs)) {
+                // Se valida existencia de campos requeridos según argumentos introducidos
+                if (!empty($agrupacion) && !property_exists($registro, $agrupacion)) {
+                    throw new Excepcion('El campo de agrupación no está presente en los registros.', [
+                        'campo' => $agrupacion,
+                    ]);
                 }
-            } else {
-                $fila = $resultado->fetch(\PDO::FETCH_ASSOC);
+                if (!empty($indice) && !property_exists($registro, $indice)) {
+                    throw new Excepcion('El campo de indización no está presente en los registros.', [
+                        'campo' => $agrupacion,
+                    ]);
+                }
 
-                if (isset($agrupar_por)) {
-                    if (!isset($fila[$agrupar_por])) {
-                        throw new \InvalidArgumentException('El campo de agrupación no está presente en los resultados.');
+                // Recorremos los registros y los convertimos en objetos
+                while ($registro) {
+                    if (!empty($agrupacion)) {
+                        $agrupacionX = $registro->{$agrupacion};
                     }
 
-                    if (isset($indizar_por)) {
-                        if (!isset($fila[$indizar_por])) {
-                            throw new \InvalidArgumentException('El campo de indización no está presente en los resultados.');
-                        }
-
-                        while ($fila) {
-                            $final[$fila[$agrupar_por]][$fila[$indizar_por]] = $fila;
-                            $fila = $resultado->fetch(\PDO::FETCH_ASSOC);
-                        }
+                    if (empty($indice)) {
+                        $indiceX = $conteo++;
                     } else {
-                        while ($fila) {
-                            $final[$fila[$agrupar_por]][] = $fila;
-                            $fila = $resultado->fetch(\PDO::FETCH_ASSOC);
-                        }
+                        $indiceX = $registro->{$indice};
                     }
-                } else {
-                    if (isset($indizar_por)) {
-                        if (!isset($fila[$indizar_por])) {
-                            throw new \InvalidArgumentException('El campo de indización no está presente en los resultados.');
-                        }
 
-                        while ($fila) {
-                            $final[$fila[$indizar_por]] = $fila;
-                            $fila = $resultado->fetch(\PDO::FETCH_ASSOC);
-                        }
-                    } else {
-                        while ($fila) {
-                            $final[] = $fila;
-                            $fila = $resultado->fetch(\PDO::FETCH_ASSOC);
-                        }
-                    }
+                    $final[$agrupacionX][$indiceX] = $registro;
+                    $registro = $resultado->fetchObject($clase, $claseArgs);
                 }
             }
 
-            // Liberamos recursos de conexión o consulta
-            $resultado->closeCursor();
-            $resultado = null;
+        } else {  // Obtenemos arreglos
 
-            if ($this->depurar) {
-                $this->reportar('Obtenemos registros desde BD en ' . round((microtime(true) - $ti) * 1000, 3)
-                    . ' ms. [indice: ' . $indizar_por . ', grupo: ' . $agrupar_por . ']', $this->sentencia);
-            }
+            if ($registro = $resultado->fetch(\PDO::FETCH_ASSOC)) {
+                // Se valida existencia de campos requeridos según argumentos introducidos
+                if (!empty($agrupacion) && !array_key_exists($agrupacion, $registro)) {
+                    throw new Excepcion('El campo de agrupación no está presente en los registros.', [
+                        'campo' => $agrupacion,
+                    ]);
+                }
+                if (!empty($indice) && !array_key_exists($indice, $registro)) {
+                    throw new Excepcion('El campo de indización no está presente en los registros.', [
+                        'campo' => $indice,
+                    ]);
+                }
 
-            // Se guarda resultados en cache según el caso
-            if ($this->cacheActivado) {
-                $this->componenteCache->guardar($this->cacheLlave, $final, $this->cacheTtl);
+                // Recorremos los registros y los convertimos en arreglos asociativos
+                while ($registro) {
+                    if (!empty($agrupacion)) {
+                        $agrupacionX = $registro[$agrupacion];
+                    }
 
-                if ($this->depurar) {
-                    $this->reportar('Guardamos resultados en cache "' . $this->cacheLlave . '" por ' . $this->cacheTtl . ' seg.');
+                    if (empty($indice)) {
+                        $indiceX = $conteo++;
+                    } else {
+                        $indiceX = $registro[$indice];
+                    }
+
+                    $final[$agrupacionX][$indiceX] = $registro;
+                    $registro = $resultado->fetch(\PDO::FETCH_ASSOC);
                 }
             }
-
-            return $final;
 
         }
+
+        // Se libera recursos consumidos
+        $resultado->closeCursor();
+        $resultado = null;
+
+        // Se quita la agrupación temporal
+        if (empty($agrupacion) && !empty($final)) {
+            $final = $final['##'];
+        }
+
+        return $final;
     }
 
     /**
      * Devuelve el primer registro generado por la consulta de la sentencia interna.
      *
      * @param string $clase Nombre de clase que servirá como formato de registro
-     * @param array $clase_args Argumentos para instanciar clase formato
+     * @param array $claseArgs Argumentos para instanciar clase formato
      *
      * @return array|bool
      *
      * @throws \RuntimeException
      * @throws \InvalidArgumentException
      */
-    public function obtenerPrimero($clase = null, array $clase_args = [])
+    public function obtenerPrimero($clase = null, array $claseArgs = [])
     {
-        $resultado = $this->obtener(null, null, $clase, $clase_args);
+        $resultado = $this->obtener(null, null, $clase, $claseArgs);
 
         if ($resultado !== false) {
-            if ($this->depurar) {
-                $this->reportar('Extraemos primer registro de consulta anterior.', $this->sentencia);
-            }
-
             return array_shift($resultado);
-        } else {
-            return false;
         }
+
+        return false;
     }
 
     /**
@@ -354,33 +309,35 @@ class Relacional
      * @return bool
      *
      * @throws \InvalidArgumentException
-     * @throws \RuntimeException
+     * @throws Excepcion
      */
     public function ejecutar()
     {
         // Validamos la sentencia a ejecutar
-        if (!isset($this->sentencia)) {
-            throw new \InvalidArgumentException('La sentencia a ejecutar se encuentra vacia.');
-        }
-
-        // Ejecutamos la sentencia
-        $ti = microtime(true);
-        $resultado = $this->pdo->exec($this->sentencia);
-
-        if ($resultado === false) {
-            if ($this->depurar) {
-                throw new \RuntimeException('La sentencia [ ' . $this->sentencia . ' ] dió el siguiente error: ' . $this->pdo->errorInfo() . '.', 103);
+        if (empty($this->sentencia)) {
+            if ($this->arrojarExcepciones) {
+                throw new \InvalidArgumentException('La sentencia a ejecutar se encuentra vacia.');
             }
 
             return false;
-        } else {
-            if ($this->depurar) {
-                $this->reportar('Ejecutamos desde BD la siguiente consulta (' . round((microtime(true) - $ti) * 1000, 3) . ' ms.) :' .
-                    '<pre style="font-weight: normal; font-family: monospace; font-size: 12px;">' . $this->sentencia . '</pre>');
+        }
+
+        // Ejecutamos la sentencia
+        $resultado = $this->pdo->exec($this->sentencia);
+
+        if ($resultado === false) {
+            if ($this->arrojarExcepciones) {
+                throw new Excepcion('La sentencia ejecutada tuvo un error interno.', [
+                    'sentencia' => $this->sentencia,
+                    'error_codigo' => $this->pdo->errorCode(),
+                    'error_info' => $this->pdo->errorInfo(),
+                ]);
             }
 
-            return true;
+            return false;
         }
+
+        return true;
     }
 
     /**
@@ -392,7 +349,6 @@ class Relacional
     {
         return $this->pdo->lastInsertId();
     }
-
 
     // METODOS PARA MANEJAR SUBCOMPONENTE PDO DE FORMA EXTERNA ---------------------------------------------------------
 
@@ -406,8 +362,10 @@ class Relacional
     public function preparar()
     {
         // Validamos la sentencia a preparar
-        if (!isset($this->sentencia)) {
-            throw new \InvalidArgumentException('La sentencia a preparar se encuentra vacia.');
+        if (empty($this->sentencia)) {
+            if ($this->arrojarExcepciones) {
+                throw new \InvalidArgumentException('La sentencia a preparar se encuentra vacia.');
+            }
         }
 
         return $this->pdo->prepare($this->sentencia);
@@ -422,53 +380,6 @@ class Relacional
     {
         return $this->pdo;
     }
-
-    // METODOS PARA MANEJAR CACHE DE CONSULTAS -------------------------------------------------------------------------
-
-    /**
-     * Registra el componente de cache para aplicar sobre consultas.
-     *
-     * @param AdaptadorInterface $cache
-     */
-    public function registrarCache(AdaptadorInterface $cache)
-    {
-        $this->componenteCache = $cache;
-    }
-
-    /**
-     * Implementa cache a la sentencia interna.
-     *
-     * @param string $llave
-     * @param int $ttl Tiempo de vida en segundos
-     * @param bool $sobrescribir
-     *
-     * @return Relacional
-     *
-     * @throws \RuntimeException
-     */
-    public function cache($llave, $ttl = 3600, $sobrescribir = false)
-    {
-        if (!isset($this->componenteCache)) {
-            throw new \RuntimeException('Pretende usar el componente de cache pero no fue registrado.');
-        }
-
-        $this->cacheActivado = true;
-        $this->cacheTtl = $ttl;
-        $this->cacheLlave = $llave;
-        $this->cacheSobrescribir = $sobrescribir;
-        $this->cacheResultado = null;
-
-        if (!$this->cacheSobrescribir) {
-            if ($this->depurar) {
-                $this->reportar('Obtenemos datos desde cache "' . $llave . '" con expiraci&oacute;n de ' . $ttl . ' seg.');
-            }
-
-            $this->cacheResultado = $this->componenteCache->obtener($llave);
-        }
-
-        return $this;
-    }
-
 
     // METODOS PARA MANEJAR TRANSACCIONES ------------------------------------------------------------------------------
 
@@ -512,9 +423,7 @@ class Relacional
         return $this->pdo->rollBack();
     }
 
-
-    // METODOS PARA MANEJAR LA SENTENCIA INTERNA -----------------------------------------------------------------------
-
+    // METODOS PARA CONSTRUIR SENTENCIA --------------------------------------------------------------------------------
 
     /**
      * Introduce directamente la sentencia interna.
@@ -522,28 +431,12 @@ class Relacional
      * @param string $sentencia
      *
      * @return Relacional
-     *
-     * @throws \RuntimeException si la sentencia es invalida
      */
     public function sql($sentencia)
     {
-        $this->reiniciarConsulta();
-
         $this->sentencia = $sentencia;
 
         return $this;
-    }
-
-    /**
-     * Reinicia los datos sobre consultas previas.
-     */
-    private function reiniciarConsulta()
-    {
-        $this->sentencia = null;
-        $this->cacheActivado = false;
-        $this->cacheTtl = null;
-        $this->cacheLlave = null;
-        $this->cacheResultado = null;
     }
 
     /**
@@ -556,8 +449,6 @@ class Relacional
      */
     public function seleccionar($campos, $tabla)
     {
-        $this->reiniciarConsulta();
-
         if (is_array($campos)) {
             $this->sentencia = 'SELECT `' . implode('`, `', $campos) . '`';
         } else {
@@ -704,8 +595,6 @@ class Relacional
      */
     public function actualizar($tabla, array $params)
     {
-        $this->reiniciarConsulta();
-
         $terminos_sql = [];
         foreach ($params as $llave => $valor) {
             // Extramos campo y su tipo
@@ -735,8 +624,6 @@ class Relacional
      */
     public function insertar($tabla, array $params)
     {
-        $this->reiniciarConsulta();
-
         $columnas = [];
         $valores = [];
 
@@ -768,8 +655,6 @@ class Relacional
      */
     public function eliminar($tabla)
     {
-        $this->reiniciarConsulta();
-
         $this->sentencia = 'DELETE FROM ' . $tabla;
 
         return $this;
@@ -778,13 +663,13 @@ class Relacional
     /**
      * Devuelve la sentencia interna hasta el momento.
      *
-     * @param bool $formato_html
+     * @param bool $formatoHtml
      *
      * @return string
      */
-    public function obtenerSql($formato_html = false)
+    public function obtenerSql($formatoHtml = false)
     {
-        if ($formato_html) {
+        if ($formatoHtml) {
             return '<code style="font-weight: bold; '
             . 'font-size: 13px; line-height: 16px; color: #000; background-color: #E6E6FF; border: solid 1px #99F; '
             . 'padding: 4px 6px; margin: 10px; position: relative;">' . $this->sentencia . '</code>';
