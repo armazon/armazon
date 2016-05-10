@@ -158,8 +158,8 @@ class Peticion
 
         // Preparamos parámetros según método
         $parametros = [];
-        if ($metodo != 'GET' && isset($_SERVER["CONTENT_TYPE"])) {
-            $parametros = self::procesarParametros(file_get_contents('php://input'), $_SERVER["CONTENT_TYPE"], $_POST);
+        if ($metodo != 'GET' && isset($_SERVER['HTTP_CONTENT_TYPE'])) {
+            $parametros = self::procesarParametros(file_get_contents('php://input'), $_SERVER['HTTP_CONTENT_TYPE'], $_POST);
         }
 
         // Preparamos cabeceras
@@ -224,7 +224,7 @@ class Peticion
         } elseif ($req->server['server_port'] == 443) {
             $url .= 's';
         }
-        
+
         $url .= '://' . $req->header['host'];
         $url .= $req->server['request_uri'];
         if (isset($req->server['query_string'])) {
