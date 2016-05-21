@@ -156,23 +156,35 @@ class Peticion
         }
         $url .= $_SERVER['REQUEST_URI'];
 
-        // Preparamos parámetros según método
-        $parametros = [];
-        if ($metodo != 'GET' && isset($_SERVER['HTTP_CONTENT_TYPE'])) {
-            $parametros = self::procesarParametros(file_get_contents('php://input'), $_SERVER['HTTP_CONTENT_TYPE'], $_POST);
-        }
-
         // Preparamos cabeceras
         $cabeceras = [];
         foreach ($_SERVER as $nombre => $valor) {
             if (substr($nombre, 0, 5) == 'HTTP_') {
                 $nombre = str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($nombre, 5)))));
                 $cabeceras[$nombre] = $valor;
+            } else if ($nombre == 'CONTENT_MD5') {
+                $cabeceras['Content-Md5'] = $valor;
             } else if ($nombre == 'CONTENT_TYPE') {
                 $cabeceras['Content-Type'] = $valor;
             } else if ($nombre == 'CONTENT_LENGTH') {
                 $cabeceras['Content-Length'] = $valor;
             }
+        }
+        if (!isset($cabeceras['Authorization'])) {
+            if (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+                $cabeceras['Authorization'] = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
+            } elseif (isset($_SERVER['PHP_AUTH_USER'])) {
+                $temp = isset($_SERVER['PHP_AUTH_PW']) ? $_SERVER['PHP_AUTH_PW'] : '';
+                $cabeceras['Authorization'] = 'Basic ' . base64_encode($_SERVER['PHP_AUTH_USER'] . ':' . $temp);
+            } elseif (isset($_SERVER['PHP_AUTH_DIGEST'])) {
+                $cabeceras['Authorization'] = $_SERVER['PHP_AUTH_DIGEST'];
+            }
+        }
+
+        // Preparamos parámetros según método
+        $parametros = [];
+        if ($metodo != 'GET') {
+            $parametros = self::procesarParametros(file_get_contents('php://input'), $cabeceras['Content-Type'], $_POST);
         }
 
         // Preparamos galletas
