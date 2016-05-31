@@ -83,6 +83,37 @@ abstract class ModeloRelacional extends \stdClass
     }
 
     /**
+     * Busca el primer registro del modelo según el filtro aplicado.
+     *
+     * @param mixed $filtro
+     * @return self
+     */
+    public static function buscarPrimero($filtro = null)
+    {
+        // Preparamos variables requeridas
+        $metadatos = get_class_vars(static::class);
+        $bd = Aplicacion::instanciar()->obtenerBdRelacional();
+
+        if (is_int($filtro) || is_string($filtro)) {
+            return $bd
+                ->seleccionar('*', $metadatos['nombreTabla'])
+                ->donde([$metadatos['llavePrimaria'] . '|' . $metadatos['campos'][$metadatos['llavePrimaria']]['tipo'] => $filtro])
+                ->limitar(1)
+                ->obtenerPrimero(static::class);
+        } elseif (is_array($filtro) && count($filtro) > 0) {
+            return $bd
+                ->seleccionar('*', $metadatos['nombreTabla'])
+                ->donde($filtro)
+                ->obtenerPrimero(static::class);
+        }
+
+        return $bd
+            ->seleccionar('*', $metadatos['nombreTabla'])
+            ->obtenerPrimero(static::class);
+
+    }
+
+    /**
      * Obtiene la cantidad de registros que posee el modelo,
      * puede aplicar un filtro a la consulta.
      *
