@@ -99,11 +99,12 @@ class Relacional
      * Prepara valor segun tipo especificado.
      *
      * @param mixed $valor Valor a preparar
-     * @param string $tipo Tipo de valor pasado: bol, txt, num, def, auto
+     * @param string $tipo Tipo de valor pasado: bol, txt, num, def
+     * @param bool $permiteVacio Define si permite cadena de texto vacio en vez de nulo
      *
      * @return string Retorna valor escapado para MySQL
      */
-    public function prepararValor($valor, $tipo = 'auto')
+    public function prepararValor($valor, $tipo = 'txt', $permiteVacio = false)
     {
         if (is_array($valor)) {
             if (empty($valor)) {
@@ -117,37 +118,28 @@ class Relacional
             return $valor;
         }
 
-        if ('auto' == $tipo) {
-            if (is_numeric($valor)) {
-                $tipo = 'num';
-            } else {
-                $tipo = 'txt';
-            }
-        }
-
-        // Retornamos valor boleano
-        if ($tipo == 'bol') {
+        // Retornamos valor boleano según el tipo
+        if ($tipo == 'bol' || $tipo == 'bool') {
             return ($valor) ? '1' : '0';
         }
 
-        // Retornamos valor nulo
+        // Detectamos y retornamos valor nulo
         if ($valor === null || $valor === false) {
             return 'NULL';
         }
-
-        // Retornamos valor textual
-        if ($tipo == 'txt') {
-            return $this->pdo->quote($valor);
+        if (!$permiteVacio && $valor === '') {
+            return 'NULL';
         }
 
-        // Retornamos valor numerico
-        if ($tipo == 'num') {
+        // Retornamos valor numerico según el tipo
+        if ($tipo == 'num' || $tipo == 'int') {
             if ($valor === '') return 'NULL';
 
             return strval(floatval($valor));
         }
 
-        return $valor;
+        // Retornamos valor textual como valor predeterminado
+        return $this->pdo->quote($valor);
     }
 
     /**
