@@ -506,7 +506,7 @@ class Relacional
                 } else {
                     $campo = $restante;
                 }
-                if (empty($tipo)) $tipo = 'auto';
+                if (empty($tipo)) $tipo = 'txt';
 
                 // Preparamos el valor segun el tipo de campo
                 if (is_array($valor)) {
@@ -516,7 +516,7 @@ class Relacional
                 }
 
                 // Escribimos el termino dentro de los filtros
-                $terminos_sql[] = "$campo $operador $valor_preparado";
+                $terminos_sql[] = "`{$campo}` {$operador} {$valor_preparado}";
 
                 // Limpiamos las variables repetitivas
                 unset($restante, $campo, $operador, $tipo);
