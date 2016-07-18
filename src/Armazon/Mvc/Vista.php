@@ -115,14 +115,14 @@ class Vista extends \stdClass
     }
 
     /**
-     * Aplica el filtro solicitado al texto.
+     * Aplica el filtro solicitado al valor.
      *
      * @param string $filtro
      * @param string $texto
      *
      * @return string
      */
-    private function filtrarValor($filtro, $texto)
+    public function filtrarValor($filtro, $texto)
     {
         if (isset($this->filtros[$filtro])) {
             $texto = $this->filtros[$filtro]($texto);
