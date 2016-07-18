@@ -442,7 +442,7 @@ class Relacional
     public function seleccionar($campos, $tabla)
     {
         if (is_array($campos)) {
-            $this->sentencia = 'SELECT `' . implode('`, `', $campos) . '`';
+            $this->sentencia = 'SELECT ' . implode(', ', $campos);
         } else {
             $this->sentencia = 'SELECT ' . $campos;
         }
@@ -450,6 +450,7 @@ class Relacional
 
         return $this;
     }
+
 
     /**
      * Implementa JOIN a la sentencia interna.
@@ -463,7 +464,7 @@ class Relacional
      */
     public function unirTabla($tabla, $campo1, $campo2, $modo = 'INNER')
     {
-        $this->sentencia .= " $modo JOIN $tabla ON `$campo1` = `$campo2`";
+        $this->sentencia .= " {$modo} JOIN {$tabla} ON {$campo1} = {$campo2}";
 
         return $this;
     }
@@ -516,7 +517,7 @@ class Relacional
                 }
 
                 // Escribimos el termino dentro de los filtros
-                $terminos_sql[] = "`{$campo}` {$operador} {$valor_preparado}";
+                $terminos_sql[] = "{$campo} {$operador} {$valor_preparado}";
 
                 // Limpiamos las variables repetitivas
                 unset($restante, $campo, $operador, $tipo);
@@ -598,7 +599,7 @@ class Relacional
                 $tipo = 'auto';
             }
 
-            $terminos_sql[] = '`' . $campo . '` = ' . $this->prepararValor($valor, $tipo);
+            $terminos_sql[] = $campo . ' = ' . $this->prepararValor($valor, $tipo);
         }
 
         $this->sentencia = 'UPDATE ' . $tabla . ' SET ' . implode(', ', $terminos_sql);
@@ -629,7 +630,7 @@ class Relacional
                 $tipo = 'auto';
             }
 
-            $columnas[] = '`' . $campo . '`';
+            $columnas[] = $campo;
             $valores[] = $this->prepararValor($valor, $tipo);
         }
 
