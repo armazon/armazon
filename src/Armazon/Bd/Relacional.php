@@ -12,6 +12,7 @@ class Relacional
     /** @var \PDO */
     private $pdo;
     private $sentencia;
+    private $depurar = false;
     private $arrojarExcepciones = false;
 
     /**
@@ -33,6 +34,10 @@ class Relacional
             $this->arrojarExcepciones = true;
         }
 
+        if (!empty($config['depurar'])) {
+            $this->depurar = true;
+        }
+
         // Convertimos DSN en arreglo según el caso
         $config['dsn'] = (array)$config['dsn'];
 
@@ -49,8 +54,8 @@ class Relacional
                 $this->pdo = new \PDO($dsn, $config['usuario'], $config['contrasena'], array(\PDO::ATTR_TIMEOUT => 1));
                 $conectado = true;
             } catch (\PDOException $e) {
-                if ($e->getCode() == 1045) {
-                    throw new \RuntimeException('Acceso denegado a la base de datos relacional.');
+                if ($this->depurar) {
+                    throw $e;
                 }
             }
         }
@@ -183,8 +188,8 @@ class Relacional
             if ($this->arrojarExcepciones) {
                 throw new Excepcion('La sentencia consultada tuvo un error interno.', [
                     'sentencia' => $this->sentencia,
-                    'error_codigo' => $this->pdo->errorCode(),
-                    'error_info' => $this->pdo->errorInfo(),
+                    'codigo' => $this->pdo->errorCode(),
+                    'info' => $this->pdo->errorInfo(),
                 ]);
             }
 
