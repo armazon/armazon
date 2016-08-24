@@ -80,9 +80,14 @@ class Manejador
             throw new \RuntimeException('La sesión no fue iniciada previamente.');
         }
 
-        $this->adaptador->escribir($this->id, $this->datos);
+        if (!$this->adaptador->escribir($this->id, $this->datos)) {
+            throw new \RuntimeException('Hubo un error escribiendo la sesión.');
+        }
+
         $this->adaptador->cerrar();
         $this->iniciado = false;
+
+        return true;
     }
 
     /**

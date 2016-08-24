@@ -38,10 +38,12 @@ class Archivos implements AdaptadorInterface
         $archivo = $this->dir . DIRECTORY_SEPARATOR . $this->nombre . '_' . $id;
 
         if (file_exists($archivo)) {
-            unlink($archivo);
+            if (unlink($archivo)) {
+                return true;
+            }
         }
 
-        return true;
+        return false;
     }
 
     /**
