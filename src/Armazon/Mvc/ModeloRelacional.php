@@ -11,10 +11,10 @@ abstract class ModeloRelacional extends \stdClass
 {
     // TODO: Cambiar estructura estatica a normal debido a falta de limpieza en Swoole y AMPHP, listo pero falta prueba
 
-    public $campos;
-    public $nombreTabla;
-    public $llavePrimaria = 'id';
-    public $llavePrimariaAutonum = true;
+    public $__campos;
+    public $__nombreTabla;
+    public $__llavePrimaria = 'id';
+    public $__llavePrimariaAutonum = true;
 
     /**
      * Rellena los campos usando un arreglo.
@@ -32,32 +32,18 @@ abstract class ModeloRelacional extends \stdClass
     }
 
     /**
-     * Busca primer registro del modelo usando el campo argumentado.
-     *
-     * @param string $campo
-     * @param mixed $valor
-     * @param string $tipo
-     * @return $this
-     */
-    public static function buscarPrimeroPorCampo($campo, $valor, $tipo = 'auto')
-    {
-        // Preparamos variables requeridas
-        $metadatos = get_class_vars(static::class);
-
-        return Aplicacion::instanciar()->obtenerBdRelacional()
-            ->seleccionar('*', $metadatos['nombreTabla'])
-            ->donde([$campo . '|' . $tipo => $valor])
-            ->limitar(1)
-            ->obtenerPrimero(static::class);
-    }
-
-    /**
      * Busca registros del modelo según el filtro aplicado.
      *
      * @param mixed $filtro
      * @return array|bool
      */
-    public static function buscar($filtro = null)
+    /**
+     * @param null $filtro
+     * @param null $indice
+     * @param null $agrupacion
+     * @return array|bool
+     */
+    public static function buscar($filtro = null, $indice = null, $agrupacion = null)
     {
         // Preparamos variables requeridas
         $metadatos = get_class_vars(static::class);
@@ -65,20 +51,20 @@ abstract class ModeloRelacional extends \stdClass
 
         if (is_int($filtro) || is_string($filtro)) {
             return $bd
-                ->seleccionar('*', $metadatos['nombreTabla'])
-                ->donde([$metadatos['llavePrimaria'] . '|' . $metadatos['campos'][$metadatos['llavePrimaria']]['tipo'] => $filtro])
+                ->seleccionar('*', $metadatos['__nombreTabla'])
+                ->donde([$metadatos['__llavePrimaria'] . '|' . $metadatos['__campos'][$metadatos['__llavePrimaria']]['tipo'] => $filtro])
                 ->limitar(1)
                 ->obtenerPrimero(static::class);
         } elseif (is_array($filtro) && count($filtro) > 0) {
             return $bd
-                ->seleccionar('*', $metadatos['nombreTabla'])
+                ->seleccionar('*', $metadatos['__nombreTabla'])
                 ->donde($filtro)
-                ->obtener($metadatos['llavePrimaria'], null, static::class);
+                ->obtener($indice, $agrupacion, static::class);
         }
 
         return $bd
-            ->seleccionar('*', $metadatos['nombreTabla'])
-            ->obtener($metadatos['llavePrimaria'], null, static::class);
+            ->seleccionar('*', $metadatos['__nombreTabla'])
+            ->obtener($indice, $agrupacion, static::class);
 
     }
 
@@ -95,20 +81,26 @@ abstract class ModeloRelacional extends \stdClass
         $bd = Aplicacion::instanciar()->obtenerBdRelacional();
 
         if (is_int($filtro) || is_string($filtro)) {
+            if (is_array($metadatos['__llavePrimaria'])) {
+                throw new \InvalidArgumentException('No se puede realizar busqueda simple sobre llave compuesta');
+            }
+
             return $bd
-                ->seleccionar('*', $metadatos['nombreTabla'])
-                ->donde([$metadatos['llavePrimaria'] . '|' . $metadatos['campos'][$metadatos['llavePrimaria']]['tipo'] => $filtro])
+                ->seleccionar('*', $metadatos['__nombreTabla'])
+                ->donde([$metadatos['__llavePrimaria'] . '|' . $metadatos['__campos'][$metadatos['__llavePrimaria']]['tipo'] => $filtro])
                 ->limitar(1)
                 ->obtenerPrimero(static::class);
         } elseif (is_array($filtro) && count($filtro) > 0) {
             return $bd
-                ->seleccionar('*', $metadatos['nombreTabla'])
+                ->seleccionar('*', $metadatos['__nombreTabla'])
                 ->donde($filtro)
+                ->limitar(1)
                 ->obtenerPrimero(static::class);
         }
 
         return $bd
-            ->seleccionar('*', $metadatos['nombreTabla'])
+            ->seleccionar('*', $metadatos['__nombreTabla'])
+            ->limitar(1)
             ->obtenerPrimero(static::class);
 
     }
@@ -127,7 +119,7 @@ abstract class ModeloRelacional extends \stdClass
         $metadatos = get_class_vars(static::class);
 
         $temp = Aplicacion::instanciar()->obtenerBdRelacional()
-            ->seleccionar('COUNT(*) as c', $metadatos['nombreTabla'])
+            ->seleccionar('COUNT(*) as c', $metadatos['__nombreTabla'])
             ->donde($filtro)
             ->obtenerPrimero();
 
@@ -138,15 +130,6 @@ abstract class ModeloRelacional extends \stdClass
         }
     }
 
-    private function cumpleRequerimiento($campo)
-    {
-        if ($this->campos[$campo]['requerido'] && (!isset($this->{$campo}) || $this->{$campo} === '')) {
-            return false;
-        }
-
-        return true;
-    }
-
     /**
      * Inserta un registro del modelo usando las propiedades modificadas.
      *
@@ -155,19 +138,19 @@ abstract class ModeloRelacional extends \stdClass
     public function insertar()
     {
         // Preparamos variables a usar
-        $parametros = [];
         $bd = Aplicacion::instanciar()->obtenerBdRelacional();
-        $llavePrimaria = (array) $this->llavePrimaria;
+        $parametros = [];
+        $llavePrimaria = (array) $this->__llavePrimaria;
 
         // Hacemos recorrido de campos
-        foreach ($this->campos as $campo => $meta) {
+        foreach ($this->__campos as $campo => $meta) {
 
             // Verificamos si el campo es llave
             $esLlave = in_array($campo, $llavePrimaria);
 
-            // Validamos si el campo es requerido
-            if (!$this->cumpleRequerimiento($campo)) {
-                if (!($esLlave && $this->llavePrimariaAutonum)) {
+            // Validamos requerimiento del campo
+            if (!empty($meta['requerido']) && $this->campoVacio($campo)) {
+                if (!($esLlave && $this->__llavePrimariaAutonum)) {
                     throw new \RuntimeException("Falta el campo requerido '{$campo}'.");
                 }
             }
@@ -178,8 +161,8 @@ abstract class ModeloRelacional extends \stdClass
             }
         }
 
-        if ($bd->insertar($this->nombreTabla, $parametros)->ejecutar()) {
-            if ($this->llavePrimariaAutonum) {
+        if ($bd->insertar($this->__nombreTabla, $parametros)->ejecutar()) {
+            if ($this->__llavePrimariaAutonum && !is_array($this->llavePrimaria)) {
                 $this->{$this->llavePrimaria} = $bd->ultimoIdInsertado();
             }
 
@@ -199,16 +182,12 @@ abstract class ModeloRelacional extends \stdClass
         // Preparamos variables a usar
         $filtro = [];
         $parametros = [];
-        $llavePrimaria = (array) $this->llavePrimaria;
+        $llavePrimaria = (array) $this->__llavePrimaria;
 
-        // Hacemos recorrido de campos
-        foreach ($this->campos as $campo => $meta) {
-
-            // Verificamos si el campo es llave
-            $esLlave = in_array($campo, $llavePrimaria);
-
+        // Hacemos recorrido de campos para rellenar parametros de actualización
+        foreach ($this->__campos as $campo => $meta) {
             // Validamos si el campo cumple con su requerimiento
-            if (!$this->cumpleRequerimiento($campo)) {
+            if (!empty($meta['requerido']) && $this->campoVacio($campo)) {
                 throw new \RuntimeException("Falta el campo requerido '{$campo}'.");
             }
 
@@ -216,20 +195,19 @@ abstract class ModeloRelacional extends \stdClass
             if (isset($this->{$campo})) {
                 $parametros[$campo . '|' . $meta['tipo']] = $this->{$campo};
             }
-
-            // Agregamos campo a los parametros de filtro
-            if ($esLlave) {
-                $filtro[$campo . '|' . $meta['tipo']] = $this->{$campo};
-            }
         }
 
-        // Validamos presencia de campos en filtro
-        if (!$filtro) {
-            throw new \RuntimeException('Falta rellenar los campos de llave primaria.', 201);
+        // Hacemos recorrido de llave primaria para rellenar el filtro de consulta
+        foreach ($llavePrimaria as $campo) {
+            if ($this->campoVacio($campo)) {
+                throw new \RuntimeException("Falta rellenar el campo llave '{$campo}'.");
+            }
+
+            $filtro[$campo . '|' . $this->__campos[$campo]['tipo']] = $this->{$campo};
         }
 
         return Aplicacion::instanciar()->obtenerBdRelacional()
-            ->actualizar($this->nombreTabla, $parametros)
+            ->actualizar($this->__nombreTabla, $parametros)
             ->donde($filtro)
             ->ejecutar();
     }
@@ -243,24 +221,29 @@ abstract class ModeloRelacional extends \stdClass
     {
         // Preparamos variables a usar
         $filtro = [];
-        $llavePrimaria = (array) $this->llavePrimaria;
+        $llavePrimaria = (array) $this->__llavePrimaria;
 
-        // Hacemos recorrido de campos
-        foreach ($this->campos as $campo => $meta) {
-            // Agregamos campo a los parametros de filtro según el caso
-            if (in_array($campo, $llavePrimaria) && isset($this->{$campo}) && $this->{$campo} !== '') {
-                $filtro[$campo . '|' . $meta['tipo']] = $this->{$campo};
+        // Hacemos recorrido de llave primaria para rellenar el filtro de consulta
+        foreach ($llavePrimaria as $campo) {
+            if ($this->campoVacio($campo)) {
+                throw new \RuntimeException("Falta rellenar el campo llave '{$campo}'.");
             }
-        }
 
-        // Validamos presencia de campos en filtro
-        if (!$filtro) {
-            throw new \RuntimeException('Falta rellenar los campos de llave primaria.');
+            $filtro[$campo . '|' . $this->__campos[$campo]['tipo']] = $this->{$campo};
         }
 
         return Aplicacion::instanciar()->obtenerBdRelacional()
-            ->eliminar($this->nombreTabla)
+            ->eliminar($this->__nombreTabla)
             ->donde($filtro)
             ->ejecutar();
+    }
+
+    private function campoVacio($campo)
+    {
+        if (!isset($this->{$campo}) || $this->{$campo} === '') {
+            return true;
+        }
+
+        return false;
     }
 }
