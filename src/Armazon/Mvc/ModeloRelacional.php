@@ -162,8 +162,8 @@ abstract class ModeloRelacional extends \stdClass
         }
 
         if ($bd->insertar($this->__nombreTabla, $parametros)->ejecutar()) {
-            if ($this->__llavePrimariaAutonum && !is_array($this->llavePrimaria)) {
-                $this->{$this->llavePrimaria} = $bd->ultimoIdInsertado();
+            if ($this->__llavePrimariaAutonum && !is_array($this->__llavePrimaria)) {
+                $this->{$this->__llavePrimaria} = $bd->ultimoIdInsertado();
             }
 
             return true;
