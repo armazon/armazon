@@ -49,6 +49,8 @@ abstract class ModeloRelacional extends \stdClass
         $metadatos = get_class_vars(static::class);
         $bd = Aplicacion::instanciar()->obtenerBdRelacional();
 
+        // TODO: Cambiar la funcionalidad de escoger un solo elemento
+
         if (is_int($filtro) || is_string($filtro)) {
             return $bd
                 ->seleccionar('*', $metadatos['__nombreTabla'])
