@@ -17,7 +17,6 @@ class Manejador
     private $id;
     private $nombre = 'armazon_sess';
 
-
     public function __construct(AdaptadorInterface $adaptador, array $conf = null)
     {
         $this->adaptador = $adaptador;
