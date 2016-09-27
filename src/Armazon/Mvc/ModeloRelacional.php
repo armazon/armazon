@@ -175,6 +175,41 @@ abstract class ModeloRelacional extends \stdClass
     }
 
     /**
+     * Guarda un registro del modelo usando las propiedades modificadas.
+     * Si el registro ya existe entonces lo modifica usando las mismas propiedades.
+     *
+     * @throws \RuntimeException
+     */
+    public function guardar()
+    {
+        // Preparamos variables a usar
+        $bd = Aplicacion::instanciar()->obtenerBdRelacional();
+        $llavePrimaria = (array) $this->__llavePrimaria;
+
+        // Hacemos recorrido de campos en la llave primaria
+        $filtro = [];
+        foreach ($llavePrimaria as $campo) {
+            if ($this->campoVacio($campo) && !$this->__llavePrimariaAutonum) {
+                throw new \RuntimeException("Falta el campo requerido '{$campo}'.");
+            }
+
+            $filtro[$campo . '|' . $this->__campos[$campo]['tipo']] = $this->{$campo};
+        }
+
+        $existe = $bd
+            ->seleccionar('*', $this->__nombreTabla)
+            ->donde($filtro)
+            ->limitar(1)
+            ->obtenerPrimero();
+
+        if ($existe) {
+            return $this->actualizar();
+        }
+
+        return $this->insertar();
+    }
+
+    /**
      * Actualiza registro del modelo filtrando con llaves.
      *
      * @throws \RuntimeException

@@ -645,6 +645,38 @@ class Relacional
     }
 
     /**
+     * Inicia la sentencia interna con REPLACE.
+     *
+     * @param string $tabla Tabla
+     * @param array $params Campos parametrizados
+     *
+     * @return Relacional
+     */
+    public function remplazar($tabla, array $params)
+    {
+        $columnas = [];
+        $valores = [];
+
+        foreach ($params as $llave => $valor) {
+            // Extramos campo y su tipo
+            $temp = explode('|', $llave);
+            $campo = $temp[0];
+            if (isset($temp[1])) {
+                $tipo = $temp[1];
+            } else {
+                $tipo = 'auto';
+            }
+
+            $columnas[] = $campo;
+            $valores[] = $this->prepararValor($valor, $tipo);
+        }
+
+        $this->sentencia = 'REPLACE INTO ' . $tabla . ' (' . implode(', ', $columnas) . ') VALUES (' . implode(', ', $valores) . ')';
+
+        return $this;
+    }
+
+    /**
      * Inicia la sentencia interna con DELETE FROM.
      *
      * @param string $tabla
