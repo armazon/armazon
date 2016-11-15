@@ -186,11 +186,11 @@ class Relacional
 
         if ($resultado === false) {
             if ($this->arrojarExcepciones) {
-                throw new Excepcion('La sentencia consultada tuvo un error interno.', [
+                $error_info = $this->pdo->errorInfo();
+                throw new Excepcion($error_info[2], [
                     'sentencia' => $this->sentencia,
-                    'codigo' => $this->pdo->errorCode(),
-                    'info' => $this->pdo->errorInfo(),
-                ]);
+                    'error_codigo' => $error_info[0],
+                ], $error_info[1]);
             }
 
             return false;
@@ -324,17 +324,17 @@ class Relacional
 
         if ($resultado === false) {
             if ($this->arrojarExcepciones) {
-                throw new Excepcion('La sentencia ejecutada tuvo un error interno.', [
+                $error_info = $this->pdo->errorInfo();
+                throw new Excepcion($error_info[2], [
                     'sentencia' => $this->sentencia,
-                    'error_codigo' => $this->pdo->errorCode(),
-                    'error_info' => $this->pdo->errorInfo(),
-                ]);
+                    'error_codigo' => $error_info[0],
+                ], $error_info[1]);
             }
 
             return false;
         }
 
-        return true;
+        return $resultado;
     }
 
     /**
