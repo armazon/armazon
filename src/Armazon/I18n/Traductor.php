@@ -2,43 +2,22 @@
 
 namespace Armazon\I18n;
 
-use Armazon\Nucleo\Aplicacion;
-
 /**
  * Traductor de textos que usa arreglos como fuentes de traducciones.
  */
 class Traductor
 {
-    /** @var Aplicacion */
-    private $app;
-
     private $traducciones = [];
-    private $dir_traducciones;
+    private $dir_base;
     private $idioma;
 
-    public function __construct(Aplicacion $app)
+    public function __construct($dirBase)
     {
-        // Inyectamos la instancia de aplicación
-        $this->app = $app;
-
-        // Definimos el directorio de las vistas
-        $this->dir_traducciones = $app->obtenerDirApp() . DIRECTORY_SEPARATOR . 'traducciones';
-    }
-
-    /**
-     * Define el directorio donde se ubican las traducciones.
-     *
-     * @param string $directorio
-     */
-    public function definirDirTraducciones($directorio)
-    {
-        $temp = realpath($directorio);
-
-        if ($temp === false) {
-            throw new \InvalidArgumentException('El directorio argumentado para las traduciones no existe.');
-        } else {
-            $this->dir_traducciones = $temp;
+        if (!is_dir($dirBase)) {
+            throw new \InvalidArgumentException("No existe el directorio definido '{$dirBase}'.");
         }
+
+        $this->dir_base = realpath($dirBase);
     }
 
     /**
@@ -49,11 +28,11 @@ class Traductor
     public function cargarIdioma($idioma)
     {
         // Preparamos camino del archivo usando el directorio base
-        $archivo = $this->dir_traducciones . DIRECTORY_SEPARATOR . $idioma . '.php';
+        $archivo = $this->dir_base . DIRECTORY_SEPARATOR . $idioma . '.php';
 
         // Validamos presencia de arhivo del idioma
         if (!is_readable($archivo)) {
-            throw new \InvalidArgumentException('No existe el archivo del idioma "' . $archivo . '".');
+            throw new \InvalidArgumentException("No existe el archivo del idioma '{$archivo}'.");
         }
 
         // Cargamos las traducciones presentes en el arhivo del idioma
